@@ -4,6 +4,7 @@ use treelint_scanner::{Scanner, LintStatus};
 use treelint_config::TreelintConfig;
 use colored::*;
 use std::str::FromStr;
+use serde_json;
 
 #[derive(Debug, Clone)]
 enum OutputFormat {
@@ -102,12 +103,34 @@ fn main() -> anyhow::Result<()> {
             // Display results based on output format
             match output {
                 OutputFormat::Json => {
-                    let json_output = serde_json::to_string_pretty(&results)?;
-                    println!("{}", json_output);
-                    
+                    let total_duration = scan_start.elapsed();
                     let total_violations: usize = results.iter()
                         .map(|r| r.violations.len())
                         .sum();
+                    let files_with_violations = results.iter()
+                        .filter(|r| !r.violations.is_empty())
+                        .count();
+                    let files_scanned = results.iter()
+                        .filter(|r| matches!(r.status, LintStatus::Ok | LintStatus::Error))
+                        .count();
+                    let files_skipped = results.iter()
+                        .filter(|r| matches!(r.status, LintStatus::Skipped))
+                        .count();
+                    
+                    let output = serde_json::json!({
+                        "files": results,
+                        "statistics": {
+                            "total_duration_ms": total_duration.as_micros() as f64 / 1000.0,
+                            "total_files": results.len(),
+                            "files_scanned": files_scanned,
+                            "files_skipped": files_skipped,
+                            "files_with_violations": files_with_violations,
+                            "total_violations": total_violations,
+                        }
+                    });
+                    
+                    let json_output = serde_json::to_string_pretty(&output)?;
+                    println!("{}", json_output);
                     
                     if total_violations > 0 {
                         std::process::exit(1);
