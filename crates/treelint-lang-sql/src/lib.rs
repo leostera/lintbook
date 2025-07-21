@@ -36,6 +36,15 @@ pub mod sql035_comparison_operators;
 pub mod sql036_line_length;
 pub mod sql037_join_condition_order;
 pub mod sql038_nested_subqueries;
+pub mod sql039_qualification_consistency;
+pub mod sql040_consistent_table_references;
+pub mod sql041_commas_placement;
+pub mod sql042_line_breaks_in_clauses;
+pub mod sql043_cte_vs_subquery;
+pub mod sql044_wildcard_in_count;
+pub mod sql045_operators_spacing;
+pub mod sql046_unnecessary_distinct;
+pub mod sql047_undefined_functions;
 
 use treelint_core::Rule;
 
@@ -80,5 +89,14 @@ pub fn lints() -> Vec<Box<dyn Rule>> {
         Box::new(sql036_line_length::LineLength),
         Box::new(sql037_join_condition_order::JoinConditionOrder),
         Box::new(sql038_nested_subqueries::NestedSubqueries),
+        Box::new(sql039_qualification_consistency::QualificationConsistency),
+        Box::new(sql040_consistent_table_references::ConsistentTableReferences),
+        Box::new(sql041_commas_placement::CommasPlacement),
+        Box::new(sql042_line_breaks_in_clauses::LineBreaksInClauses),
+        Box::new(sql043_cte_vs_subquery::CteVsSubquery),
+        Box::new(sql044_wildcard_in_count::WildcardInCount),
+        Box::new(sql045_operators_spacing::OperatorsSpacing),
+        Box::new(sql046_unnecessary_distinct::UnnecessaryDistinct),
+        Box::new(sql047_undefined_functions::UndefinedFunctions),
     ]
 }

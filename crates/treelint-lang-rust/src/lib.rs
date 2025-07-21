@@ -1,5 +1,6 @@
 pub mod rs001_absurd_extreme_comparisons;
 pub mod rs002_almost_swapped;
+pub mod rs003_approx_constant;
 pub mod rs004_async_yields_async;
 pub mod rs013_eq_op;
 pub mod rs014_erasing_op;
@@ -16,6 +17,8 @@ pub mod rs035_modulo_one;
 pub mod rs038_non_octal_unix_permissions;
 pub mod rs041_option_env_unwrap;
 pub mod rs046_possible_missing_comma;
+pub mod rs050_reversed_empty_ranges;
+pub mod rs051_self_assignment;
 
 use treelint_core::*;
 
@@ -23,6 +26,7 @@ pub fn lints() -> Vec<Box<dyn Rule>> {
     vec![
         Box::new(rs001_absurd_extreme_comparisons::AbsurdExtremeComparisons),
         Box::new(rs002_almost_swapped::AlmostSwapped),
+        Box::new(rs003_approx_constant::ApproxConstant),
         Box::new(rs004_async_yields_async::AsyncYieldsAsync),
         Box::new(rs013_eq_op::EqOp),
         Box::new(rs014_erasing_op::ErasingOp),
@@ -39,5 +43,7 @@ pub fn lints() -> Vec<Box<dyn Rule>> {
         Box::new(rs038_non_octal_unix_permissions::NonOctalUnixPermissions),
         Box::new(rs041_option_env_unwrap::OptionEnvUnwrap),
         Box::new(rs046_possible_missing_comma::PossibleMissingComma),
+        Box::new(rs050_reversed_empty_ranges::ReversedEmptyRanges),
+        Box::new(rs051_self_assignment::SelfAssignment),
     ]
 }
