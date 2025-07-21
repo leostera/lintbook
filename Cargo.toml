@@ -1,0 +1,62 @@
+[workspace]
+members = ["crates/*"]
+resolver = "2"
+
+[workspace.dependencies]
+clap = { version = "4.0", features = ["derive"] }
+tokio = { version = "1.0", features = ["full"] }
+rayon = "1.7"
+tree-sitter = "0.25"
+anyhow = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+uuid = { version = "1.0", features = ["v4"] }
+
+# Tree-sitter grammars
+tree-sitter-bash = "*"
+tree-sitter-c = "*"
+tree-sitter-c-sharp = "*"
+tree-sitter-clojure = "*"
+tree-sitter-cmake = "*"
+tree-sitter-cpp = "*"
+tree-sitter-css = "*"
+tree-sitter-dart = "*"
+tree-sitter-dockerfile = "*"
+tree-sitter-elixir = "*"
+tree-sitter-elm = "*"
+tree-sitter-erlang = "*"
+tree-sitter-fish = "*"
+tree-sitter-gleam = "*"
+tree-sitter-go = "*"
+tree-sitter-haskell = "*"
+tree-sitter-html = "*"
+tree-sitter-java = "*"
+tree-sitter-javascript = "*"
+tree-sitter-json = "*"
+tree-sitter-julia = "*"
+tree-sitter-lua = "*"
+tree-sitter-markdown = "*"
+tree-sitter-nix = "*"
+tree-sitter-ocaml = "*"
+tree-sitter-php = "*"
+tree-sitter-python = "*"
+tree-sitter-ruby = "*"
+tree-sitter-rust = "*"
+tree-sitter-scala = "*"
+tree-sitter-scss = "*"
+tree-sitter-svelte = "*"
+tree-sitter-toml = "*"
+tree-sitter-typescript = "*"
+tree-sitter-vim = "*"
+tree-sitter-vue = "*"
+tree-sitter-xml = "*"
+tree-sitter-yaml = "*"
+tree-sitter-zig = "*"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"

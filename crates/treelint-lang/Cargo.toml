@@ -1,0 +1,9 @@
+[package]
+name = "treelint-lang"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tree-sitter = { workspace = true }
+tree-sitter-python = { workspace = true }
+serde = { workspace = true }

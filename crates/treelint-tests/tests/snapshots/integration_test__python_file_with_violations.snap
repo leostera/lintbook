@@ -1,0 +1,32 @@
+---
+source: crates/treelint-tests/tests/integration_test.rs
+expression: filtered_output
+snapshot_kind: text
+---
+{
+  "files": [
+    {
+      "duration": 0.0,
+      "file_path": "test_example.py",
+      "language": "Python",
+      "status": "Error",
+      "violations": [
+        {
+          "column": 5,
+          "line": 5,
+          "lint_id": "PY001",
+          "lint_name": "no-try-catch",
+          "message": "Disallow try/except statements"
+        }
+      ]
+    }
+  ],
+  "statistics": {
+    "files_scanned": 2,
+    "files_skipped": 0,
+    "files_with_violations": 1,
+    "total_duration_ms": 0.0,
+    "total_files": 2,
+    "total_violations": 1
+  }
+}

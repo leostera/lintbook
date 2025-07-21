@@ -1,0 +1,16 @@
+[package]
+name = "treelint-cli"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "treelint"
+path = "src/main.rs"
+
+[dependencies]
+structopt = "0.3"
+treelint-scanner = { path = "../treelint-scanner" }
+treelint-config = { path = "../treelint-config" }
+anyhow = { workspace = true }
+colored = "2.0"
+serde_json = { workspace = true }
