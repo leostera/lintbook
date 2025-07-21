@@ -108,9 +108,21 @@ impl PerformanceAntiPatterns {
         if lower_line.contains(" where ") {
             // Common functions that prevent index usage when applied to columns
             let problem_functions = [
-                "upper(", "lower(", "trim(", "substring(", "left(", "right(",
-                "year(", "month(", "day(", "datepart(", "extract(",
-                "convert(", "cast(", "isnull(", "coalesce("
+                "upper(",
+                "lower(",
+                "trim(",
+                "substring(",
+                "left(",
+                "right(",
+                "year(",
+                "month(",
+                "day(",
+                "datepart(",
+                "extract(",
+                "convert(",
+                "cast(",
+                "isnull(",
+                "coalesce(",
             ];
             
             for func in problem_functions.iter() {

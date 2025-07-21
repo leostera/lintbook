@@ -80,7 +80,7 @@ impl SecurityPatterns {
         // Look for common dynamic SQL patterns
         let dynamic_patterns = [
             "exec (", "execute (", "sp_executesql", "exec @", "execute @",
-            "concat(", "||", "+'", "+ '", "+@", "+ @"
+            "concat(", "||", "+'", "+ '", "+@", "+ @",
         ];
         
         for pattern in dynamic_patterns.iter() {
@@ -211,7 +211,7 @@ impl SecurityPatterns {
                 let lower_literal = literal.to_lowercase();
                 let sql_keywords = [
                     "union select", "'; drop", "\"; drop", "' or '1'='1", "\" or \"1\"=\"1\"",
-                    "' or 1=1", "\" or 1=1", "; exec", "; execute", "' union", "\" union"
+                    "' or 1=1", "\" or 1=1", "; exec", "; execute", "' union", "\" union",
                 ];
                 
                 for pattern in sql_keywords.iter() {

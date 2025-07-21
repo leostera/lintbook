@@ -80,7 +80,7 @@ impl ReplicationPatterns {
         let non_deterministic_functions = [
             "newid()", "rand()", "getdate()", "current_timestamp", "sysdatetime()",
             "getutcdate()", "sysutcdatetime()", "user_name()", "system_user",
-            "suser_name()", "host_name()", "@@servername", "@@spid"
+            "suser_name()", "host_name()", "@@servername", "@@spid",
         ];
         
         for func in non_deterministic_functions.iter() {

@@ -130,7 +130,7 @@ impl IndexUsageHints {
             // Look for common filtering patterns
             let common_filter_columns = [
                 "user_id", "customer_id", "order_id", "product_id", "account_id",
-                "status", "type", "category", "state", "active", "enabled"
+                "status", "type", "category", "state", "active", "enabled",
             ];
             
             for column in common_filter_columns.iter() {
