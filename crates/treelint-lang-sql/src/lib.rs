@@ -28,6 +28,9 @@ pub mod sql027_avoid_aliases_in_ctes;
 pub mod sql028_column_names_in_group_order_by;
 pub mod sql029_quoted_literals;
 pub mod sql030_distinct_values_in_clause;
+pub mod sql031_leading_whitespace;
+pub mod sql032_trailing_whitespace;
+pub mod sql033_nested_case_statements;
 
 use treelint_core::Rule;
 
@@ -64,5 +67,8 @@ pub fn lints() -> Vec<Box<dyn Rule>> {
         Box::new(sql028_column_names_in_group_order_by::ColumnNamesInGroupOrderBy),
         Box::new(sql029_quoted_literals::QuotedLiterals),
         Box::new(sql030_distinct_values_in_clause::DistinctValuesInClause),
+        Box::new(sql031_leading_whitespace::LeadingWhitespace),
+        Box::new(sql032_trailing_whitespace::TrailingWhitespace),
+        Box::new(sql033_nested_case_statements::NestedCaseStatements),
     ]
 }
