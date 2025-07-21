@@ -191,3 +191,35 @@ fn test_sql030_distinct_values_in_clause() {
     let violations = check_violations(&rule, "SELECT * FROM users WHERE id IN (1, 2, 1, 3)");
     assert!(!violations.is_empty());
 }
+
+#[test]
+fn test_sql034_boolean_value_expressions() {
+    let rule = treelint_lang_sql::sql034_boolean_value_expressions::BooleanValueExpressions;
+    
+    // Should find violations for = TRUE
+    let violations = check_violations(&rule, "SELECT * FROM users WHERE is_active = TRUE");
+    assert!(!violations.is_empty());
+    
+    // Should find violations for = FALSE
+    let violations = check_violations(&rule, "SELECT * FROM users WHERE is_deleted = FALSE");
+    assert!(!violations.is_empty());
+}
+
+#[test]
+fn test_sql035_comparison_operators() {
+    let rule = treelint_lang_sql::sql035_comparison_operators::ComparisonOperators;
+    
+    // Should find violations for non-standard operators
+    let violations = check_violations(&rule, "SELECT * FROM users WHERE age !< 18");
+    assert!(!violations.is_empty());
+}
+
+#[test]
+fn test_sql036_line_length() {
+    let rule = treelint_lang_sql::sql036_line_length::LineLength;
+    
+    // Should find violations for lines over 120 characters
+    let long_line = "SELECT customer_id, first_name, last_name, email_address, phone_number, street_address, city, state, postal_code, country, registration_date FROM customers WHERE active = true";
+    let violations = check_violations(&rule, long_line);
+    assert!(!violations.is_empty());
+}

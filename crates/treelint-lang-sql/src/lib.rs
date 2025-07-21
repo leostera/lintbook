@@ -31,6 +31,11 @@ pub mod sql030_distinct_values_in_clause;
 pub mod sql031_leading_whitespace;
 pub mod sql032_trailing_whitespace;
 pub mod sql033_nested_case_statements;
+pub mod sql034_boolean_value_expressions;
+pub mod sql035_comparison_operators;
+pub mod sql036_line_length;
+pub mod sql037_join_condition_order;
+pub mod sql038_nested_subqueries;
 
 use treelint_core::Rule;
 
@@ -70,5 +75,10 @@ pub fn lints() -> Vec<Box<dyn Rule>> {
         Box::new(sql031_leading_whitespace::LeadingWhitespace),
         Box::new(sql032_trailing_whitespace::TrailingWhitespace),
         Box::new(sql033_nested_case_statements::NestedCaseStatements),
+        Box::new(sql034_boolean_value_expressions::BooleanValueExpressions),
+        Box::new(sql035_comparison_operators::ComparisonOperators),
+        Box::new(sql036_line_length::LineLength),
+        Box::new(sql037_join_condition_order::JoinConditionOrder),
+        Box::new(sql038_nested_subqueries::NestedSubqueries),
     ]
 }
