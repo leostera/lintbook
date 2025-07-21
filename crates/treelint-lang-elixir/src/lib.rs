@@ -4,6 +4,7 @@ pub mod ex3001_iex_pry;
 pub mod ex3002_io_inspect;
 pub mod ex3003_variable_names;
 pub mod ex3010_trailing_whitespace;
+pub mod ex3011_semicolons;
 pub mod ex4001_unsafe_to_atom;
 pub mod ex5001_function_names;
 pub mod ex5002_module_names;
@@ -20,6 +21,7 @@ pub fn lints() -> Vec<Box<dyn Rule>> {
         Box::new(ex3002_io_inspect::IoInspect),
         Box::new(ex3003_variable_names::VariableNames),
         Box::new(ex3010_trailing_whitespace::TrailingWhitespace),
+        Box::new(ex3011_semicolons::Semicolons),
         Box::new(ex4001_unsafe_to_atom::UnsafeToAtom),
         Box::new(ex5001_function_names::FunctionNames),
         Box::new(ex5002_module_names::ModuleNames),
