@@ -45,7 +45,6 @@ impl TrailingCommas {
 
         for (line_idx, line) in lines.iter().enumerate() {
             let lower_line = line.to_lowercase();
-            let _trimmed = line.trim();
 
             // Start of SELECT clause
             if lower_line.contains("select ") && !lower_line.contains("*") {

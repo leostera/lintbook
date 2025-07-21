@@ -23,6 +23,11 @@ pub mod sql022_quote_style_consistency;
 pub mod sql023_type_casting_style;
 pub mod sql024_wildcard_column_ambiguity;
 pub mod sql025_unnecessary_quoted_identifiers;
+pub mod sql026_table_alias_length;
+pub mod sql027_avoid_aliases_in_ctes;
+pub mod sql028_column_names_in_group_order_by;
+pub mod sql029_quoted_literals;
+pub mod sql030_distinct_values_in_clause;
 
 use treelint_core::Rule;
 
@@ -54,5 +59,10 @@ pub fn lints() -> Vec<Box<dyn Rule>> {
         Box::new(sql023_type_casting_style::TypeCastingStyle),
         Box::new(sql024_wildcard_column_ambiguity::WildcardColumnAmbiguity),
         Box::new(sql025_unnecessary_quoted_identifiers::UnnecessaryQuotedIdentifiers),
+        Box::new(sql026_table_alias_length::TableAliasLength),
+        Box::new(sql027_avoid_aliases_in_ctes::AvoidAliasesInCtes),
+        Box::new(sql028_column_names_in_group_order_by::ColumnNamesInGroupOrderBy),
+        Box::new(sql029_quoted_literals::QuotedLiterals),
+        Box::new(sql030_distinct_values_in_clause::DistinctValuesInClause),
     ]
 }
