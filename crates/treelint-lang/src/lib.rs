@@ -1,8 +1,9 @@
-pub mod lints;
-
-use lints::Rule;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::path::Path;
+use std::time::Instant;
+use treelint_config::TreelintConfig;
+use treelint_core::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Grammar {
@@ -43,6 +44,7 @@ pub enum Grammar {
     Zig,
     Cmake,
     Scss,
+    Sql,
     Svelte,
     Vue,
 }
@@ -87,6 +89,7 @@ impl Grammar {
             Grammar::Zig => "zig",
             Grammar::Cmake => "cmake",
             Grammar::Scss => "scss",
+            Grammar::Sql => "sql",
             Grammar::Svelte => "svelte",
             Grammar::Vue => "vue",
         }
@@ -131,14 +134,18 @@ impl Grammar {
             Grammar::Zig => &["zig"],
             Grammar::Cmake => &["cmake"],
             Grammar::Scss => &["scss"],
+            Grammar::Sql => &["sql"],
             Grammar::Svelte => &["svelte"],
             Grammar::Vue => &["vue"],
         }
     }
 
-    pub fn get_lints(&self) -> Vec<Box<dyn Rule>> {
+    pub fn lints(&self) -> Vec<Box<dyn Rule>> {
         match self {
-            Grammar::Python => lints::python::get_python_lints(),
+            Grammar::Python => treelint_lang_python::lints(),
+            Grammar::Rust => treelint_lang_rust::lints(),
+            Grammar::Elixir => treelint_lang_elixir::lints(),
+            Grammar::Sql => treelint_lang_sql::lints(),
             _ => vec![],
         }
     }
@@ -183,6 +190,7 @@ pub fn get_supported_grammars() -> Vec<Grammar> {
         Grammar::Zig,
         Grammar::Cmake,
         Grammar::Scss,
+        Grammar::Sql,
         Grammar::Svelte,
         Grammar::Vue,
     ]
@@ -205,6 +213,65 @@ pub fn get_grammars_for_extensions(extensions: &[String]) -> Vec<Grammar> {
         .collect::<std::collections::HashSet<_>>()
         .into_iter()
         .collect()
+}
+
+pub fn parse(
+    config: &TreelintConfig,
+    path: &Path,
+    source: &str,
+    grammar: Grammar,
+    start_time: Instant,
+) -> LintResult<Grammar> {
+    // Parse with tree-sitter
+    let mut parser = tree_sitter::Parser::new();
+    let language = match grammar {
+        Grammar::Python => tree_sitter_python::LANGUAGE.into(),
+        Grammar::Elixir => tree_sitter_elixir::LANGUAGE.into(),
+        Grammar::Sql => tree_sitter_sequel::LANGUAGE.into(),
+        Grammar::Rust => tree_sitter_rust::LANGUAGE.into(),
+        _ => {
+            // Skip unsupported parsers for now
+            return LintResult {
+                file_path: path.to_path_buf(),
+                duration: start_time.elapsed(),
+                status: LintStatus::Skipped,
+                violations: vec![],
+                language: None,
+            };
+        }
+    };
+
+    parser.set_language(&language).unwrap();
+
+    let tree = parser.parse(&source, None).unwrap();
+    // Run lints
+    let mut all_violations = Vec::new();
+
+    for lint in grammar.lints() {
+        if config.is_lint_enabled(grammar.name(), lint.name()) {
+            let mut violations = lint.check(&tree, &source);
+            // Ensure violations have the correct lint metadata
+            for v in &mut violations {
+                v.lint_id = lint.id().to_string();
+                v.lint_name = lint.name().to_string();
+            }
+            all_violations.extend(violations);
+        }
+    }
+
+    let status = if all_violations.is_empty() {
+        LintStatus::Ok
+    } else {
+        LintStatus::Error
+    };
+
+    LintResult {
+        file_path: path.to_path_buf(),
+        duration: start_time.elapsed(),
+        status,
+        violations: all_violations,
+        language: Some(grammar),
+    }
 }
 
 #[cfg(test)]
@@ -245,13 +312,13 @@ mod tests {
 
     #[test]
     fn test_python_has_lints() {
-        let lints = Grammar::Python.get_lints();
+        let lints = Grammar::Python.lints();
         assert!(!lints.is_empty());
     }
 
     #[test]
     fn test_unsupported_grammar_has_no_lints() {
-        let lints = Grammar::Json.get_lints();
+        let lints = Grammar::Json.lints();
         assert!(lints.is_empty());
     }
 }

@@ -11,6 +11,9 @@ path = "src/main.rs"
 structopt = "0.3"
 treelint-scanner = { path = "../treelint-scanner" }
 treelint-config = { path = "../treelint-config" }
+treelint-core = { path = "../treelint-core" }
+treelint-lang = { path = "../treelint-lang" }
+treelint-lang-sql = { path = "../treelint-lang-sql" }
 anyhow = { workspace = true }
 colored = "2.0"
 serde_json = { workspace = true }

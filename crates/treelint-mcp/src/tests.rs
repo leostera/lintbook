@@ -1,7 +1,5 @@
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::mcp::types::*;
     use crate::server::TreelintMcpServer;
     use serde_json::json;
 

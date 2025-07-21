@@ -1,5 +1,5 @@
-use crate::lints::{LintViolation, Rule};
 use tree_sitter::{Node, Tree};
+use treelint_core::{LintViolation, Rule};
 
 pub struct NoSysPathModification;
 

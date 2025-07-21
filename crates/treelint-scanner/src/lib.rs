@@ -1,46 +1,11 @@
 use anyhow::Result;
+use ignore::WalkBuilder;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
-use treelint_lang::{get_grammars_for_extensions, lints::LintViolation, Grammar};
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LintResult {
-    pub file_path: PathBuf,
-    #[serde(with = "serde_millis")]
-    pub duration: Duration,
-    pub status: LintStatus,
-    pub violations: Vec<LintViolation>,
-    pub language: Option<Grammar>,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum LintStatus {
-    Ok,      // No violations found
-    Error,   // Violations found
-    Skipped, // File skipped (unsupported language, etc)
-}
-
-mod serde_millis {
-    use serde::{Deserialize, Deserializer, Serialize, Serializer};
-    use std::time::Duration;
-
-    pub fn serialize<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let millis = duration.as_micros() as f64 / 1000.0;
-        millis.serialize(serializer)
-    }
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Duration, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let millis = f64::deserialize(deserializer)?;
-        Ok(Duration::from_millis(millis as u64))
-    }
-}
+use treelint_core::*;
+use treelint_lang::*;
 
 pub struct Scanner;
 
@@ -99,27 +64,75 @@ impl Scanner {
     pub fn scan_and_lint_files(
         repo_root: &Path,
         config: &treelint_config::TreelintConfig,
-    ) -> Result<Vec<LintResult>> {
-        let mut results = Vec::new();
+    ) -> Result<Vec<LintResult<Grammar>>> {
+        use std::sync::{Arc, Mutex};
 
-        fn visit_dir(
-            dir: &Path,
-            results: &mut Vec<LintResult>,
-            config: &treelint_config::TreelintConfig,
-        ) -> Result<()> {
-            for entry in std::fs::read_dir(dir)? {
-                let entry = entry?;
+        // Collect enabled extensions for quick filtering
+        let enabled_extensions: HashSet<String> = config
+            .treelint
+            .languages
+            .iter()
+            .filter_map(|lang| {
+                treelint_lang::get_supported_grammars()
+                    .into_iter()
+                    .find(|g| g.name() == lang)
+            })
+            .flat_map(|g| g.extensions().iter().map(|e| e.to_string()))
+            .collect();
+
+        // Build walker with minimal features for performance
+        let mut walker = WalkBuilder::new(repo_root);
+        walker
+            .hidden(false) // Don't skip hidden files by default
+            .ignore(true) // Honor .ignore files
+            .git_ignore(true) // Honor .gitignore files
+            .git_global(false) // Skip global gitignore for performance
+            .git_exclude(false) // Skip .git/info/exclude for performance
+            .threads(num_cpus::get()); // Use all available CPU cores
+
+        // Only add custom ignore patterns if needed
+        if !config.treelint.ignore.is_empty() {
+            let mut overrides = ignore::overrides::OverrideBuilder::new(repo_root);
+            for pattern in &config.treelint.ignore {
+                // Add patterns as globs to exclude (! prefix means exclude)
+                overrides.add(&format!("!{}", pattern))?;
+            }
+            walker.overrides(overrides.build()?);
+        }
+
+        // Add file type filters to reduce the number of files we need to check
+        if !enabled_extensions.is_empty() {
+            let mut types_builder = ignore::types::TypesBuilder::new();
+            for ext in &enabled_extensions {
+                types_builder.add("treelint", &format!("*.{}", ext))?;
+            }
+            types_builder.select("treelint");
+            walker.types(types_builder.build()?);
+        }
+
+        // Use a thread-safe vector to collect results
+        let results = Arc::new(Mutex::new(Vec::new()));
+
+        // Run the parallel walker
+        walker.build_parallel().run(|| {
+            let config = config.clone();
+            let results = Arc::clone(&results);
+
+            Box::new(move |entry| {
+                let entry = match entry {
+                    Ok(e) => e,
+                    Err(_) => return ignore::WalkState::Continue,
+                };
+
                 let path = entry.path();
 
+                // Skip directories
                 if path.is_dir() {
-                    let dir_name = path.file_name().unwrap().to_string_lossy();
-                    if !dir_name.starts_with('.')
-                        && dir_name != "target"
-                        && dir_name != "node_modules"
-                    {
-                        visit_dir(&path, results, config)?;
-                    }
-                } else if let Some(extension) = path.extension() {
+                    return ignore::WalkState::Continue;
+                }
+
+                // Check file extension
+                if let Some(extension) = path.extension() {
                     let ext = extension.to_string_lossy();
 
                     // Check if we support this language
@@ -133,78 +146,23 @@ impl Scanner {
                             let start_time = std::time::Instant::now();
 
                             // Read file
-                            let source = match std::fs::read_to_string(&path) {
-                                Ok(content) => content,
-                                Err(_) => {
-                                    results.push(LintResult {
-                                        file_path: path.clone(),
-                                        duration: start_time.elapsed(),
-                                        status: LintStatus::Skipped,
-                                        violations: vec![],
-                                        language: None,
-                                    });
-                                    continue;
-                                }
-                            };
-
-                            // Parse with tree-sitter
-                            let mut parser = tree_sitter::Parser::new();
-                            let language = match grammar {
-                                Grammar::Python => tree_sitter_python::LANGUAGE.into(),
-                                _ => {
-                                    // Skip unsupported parsers for now
-                                    results.push(LintResult {
-                                        file_path: path.clone(),
-                                        duration: start_time.elapsed(),
-                                        status: LintStatus::Skipped,
-                                        violations: vec![],
-                                        language: None,
-                                    });
-                                    continue;
-                                }
-                            };
-
-                            parser.set_language(&language).unwrap();
-
-                            if let Some(tree) = parser.parse(&source, None) {
-                                // Run lints
-                                let mut all_violations = Vec::new();
-                                let lints = grammar.get_lints();
-
-                                for lint in lints {
-                                    if config.is_lint_enabled(grammar.name(), lint.name()) {
-                                        let mut violations = lint.check(&tree, &source);
-                                        // Ensure violations have the correct lint metadata
-                                        for v in &mut violations {
-                                            v.lint_id = lint.id().to_string();
-                                            v.lint_name = lint.name().to_string();
-                                        }
-                                        all_violations.extend(violations);
-                                    }
-                                }
-
-                                let status = if all_violations.is_empty() {
-                                    LintStatus::Ok
-                                } else {
-                                    LintStatus::Error
-                                };
-
-                                results.push(LintResult {
-                                    file_path: path.clone(),
-                                    duration: start_time.elapsed(),
-                                    status,
-                                    violations: all_violations,
-                                    language: Some(grammar),
-                                });
-                            }
+                            let source = std::fs::read_to_string(&path).unwrap();
+                            let mut results_lock = results.lock().unwrap();
+                            results_lock.push(treelint_lang::parse(&config, path, &source, grammar, start_time));
                         }
                     }
                 }
-            }
-            Ok(())
-        }
 
-        visit_dir(repo_root, &mut results, config)?;
+                ignore::WalkState::Continue
+            })
+        });
+
+        // Extract results from Arc<Mutex<Vec<_>>>
+        let results = Arc::try_unwrap(results)
+            .unwrap_or_else(|_| panic!("Failed to unwrap results"))
+            .into_inner()
+            .unwrap();
+
         Ok(results)
     }
 }

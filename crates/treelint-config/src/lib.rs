@@ -2,17 +2,19 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TreelintConfig {
     pub treelint: TreelintSection,
     #[serde(default)]
     pub lints: HashMap<String, HashMap<String, bool>>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TreelintSection {
     pub languages: Vec<String>,
     pub autofix: bool,
+    #[serde(default)]
+    pub ignore: Vec<String>,
 }
 
 impl TreelintConfig {
@@ -26,6 +28,7 @@ impl TreelintConfig {
             treelint: TreelintSection {
                 languages,
                 autofix: true,
+                ignore: vec![],
             },
             lints: HashMap::new(),
         }

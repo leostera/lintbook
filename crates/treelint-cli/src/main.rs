@@ -4,7 +4,9 @@ use std::env;
 use std::str::FromStr;
 use structopt::StructOpt;
 use treelint_config::TreelintConfig;
-use treelint_scanner::{LintStatus, Scanner};
+use treelint_lang::Grammar;
+use treelint_scanner::Scanner;
+use treelint_core::LintStatus;
 
 #[derive(Debug, Clone)]
 enum OutputFormat {
@@ -40,6 +42,13 @@ enum Cli {
     },
     #[structopt(about = "Fix repository lint violations")]
     Fix,
+    #[structopt(about = "List all available lint rules")]
+    Lints {
+        #[structopt(long, help = "Show only rules for specific language")]
+        language: Option<String>,
+        #[structopt(long, default_value = "human", help = "Output format (human, json)")]
+        output: OutputFormat,
+    },
 }
 
 fn main() -> anyhow::Result<()> {
@@ -157,14 +166,25 @@ fn main() -> anyhow::Result<()> {
                                 println!("{} {} {:.2}ms", file_path, "OK".green(), duration_ms);
                             }
                             LintStatus::Skipped => {
-                                println!("{}", format!("{} SKIP {:.2}ms", file_path, duration_ms).dimmed());
+                                println!(
+                                    "{}",
+                                    format!("{} SKIP {:.2}ms", file_path, duration_ms).dimmed()
+                                );
                             }
                             LintStatus::Error => {
                                 println!("{} {} {:.2}ms", file_path, "ERR".red(), duration_ms);
                                 for violation in &result.violations {
+                                    // Extract just the filename from the path
+                                    let filename = result
+                                        .file_path
+                                        .file_name()
+                                        .and_then(|n| n.to_str())
+                                        .map(|s| s.to_string())
+                                        .unwrap_or_else(|| file_path.to_string());
+
                                     println!(
                                         "  {}:{}:{} {} ({}) - {}",
-                                        file_path.to_string().dimmed(),
+                                        filename.dimmed(),
                                         violation.line.to_string().yellow(),
                                         violation.column.to_string().yellow(),
                                         violation.lint_id.bright_cyan(),
@@ -189,6 +209,90 @@ fn main() -> anyhow::Result<()> {
         }
         Cli::Fix => {
             println!("Fixing repository lint violations...");
+        }
+        Cli::Lints { language, output } => {
+            let mut all_lints = Vec::new();
+
+            // Get lints for specific language or all languages
+            if let Some(lang) = language {
+                // Try to find the grammar for the specified language
+                let grammar = treelint_lang::get_supported_grammars()
+                    .into_iter()
+                    .find(|g| g.name() == lang.to_lowercase());
+
+                if let Some(grammar) = grammar {
+                    let lints = grammar.lints();
+                    all_lints.extend(lints.into_iter().map(|lint| (grammar.name(), lint)));
+                } else {
+                    match output {
+                        OutputFormat::Human => {
+                            println!("❌ Unknown language: {}. Use 'treelint lints' to see all supported languages.", lang);
+                        }
+                        OutputFormat::Json => {
+                            eprintln!("Error: Unknown language: {}", lang);
+                        }
+                    }
+                    return Ok(());
+                }
+            } else {
+                // Get lints for all supported grammars
+                for grammar in treelint_lang::get_supported_grammars() {
+                    let lints = grammar.lints();
+                    all_lints.extend(lints.into_iter().map(|lint| (grammar.name(), lint)));
+                }
+            }
+
+            // Display results based on output format
+            match output {
+                OutputFormat::Json => {
+                    let mut languages = std::collections::HashMap::new();
+
+                    for (lang, lint) in all_lints {
+                        let lang_entry = languages.entry(lang).or_insert_with(Vec::new);
+                        lang_entry.push(serde_json::json!({
+                            "id": lint.id(),
+                            "name": lint.name(),
+                            "description": lint.description(),
+                            "explanation": lint.explanation()
+                        }));
+                    }
+
+                    let output = serde_json::json!({
+                        "languages": languages
+                    });
+
+                    println!("{}", serde_json::to_string_pretty(&output)?);
+                }
+                OutputFormat::Human => {
+                    if all_lints.is_empty() {
+                        println!("No lint rules available.");
+                        return Ok(());
+                    }
+
+                    println!("📋 Available Lint Rules\n");
+
+                    let mut current_language = "";
+                    for (lang, lint) in all_lints {
+                        if lang != current_language {
+                            if !current_language.is_empty() {
+                                println!();
+                            }
+                            println!("🔍 {} Rules:", lang.to_uppercase());
+                            current_language = lang;
+                        }
+
+                        println!(
+                            "  {} {} - {}",
+                            lint.id().bright_cyan(),
+                            lint.name().cyan(),
+                            lint.description()
+                        );
+                    }
+
+                    println!("\n💡 Use 'treelint lints --language <language>' to see rules for a specific language");
+                    println!("💡 Use 'treelint lints --output json' for machine-readable output");
+                }
+            }
         }
     }
 

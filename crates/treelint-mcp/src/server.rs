@@ -42,13 +42,69 @@ impl TreelintMcpServer {
         debug!("Handling request: {}", request.method);
 
         let result = match request.method.as_str() {
-            "initialize" => self.handle_initialize(request.params).await?,
+            "initialize" => match self.handle_initialize(request.params).await {
+                Ok(result) => result,
+                Err(e) => {
+                    return Ok(JsonRpcResponse {
+                        jsonrpc: "2.0".to_string(),
+                        id: request.id,
+                        result: None,
+                        error: Some(JsonRpcError {
+                            code: -32602,
+                            message: e.to_string(),
+                            data: None,
+                        }),
+                    })
+                }
+            },
             "tools/list" => self.handle_tools_list().await?,
-            "tools/call" => self.handle_tool_call(request.params).await?,
+            "tools/call" => match self.handle_tool_call(request.params).await {
+                Ok(result) => result,
+                Err(e) => {
+                    return Ok(JsonRpcResponse {
+                        jsonrpc: "2.0".to_string(),
+                        id: request.id,
+                        result: None,
+                        error: Some(JsonRpcError {
+                            code: -32602,
+                            message: e.to_string(),
+                            data: None,
+                        }),
+                    })
+                }
+            },
             "resources/list" => self.handle_resources_list().await?,
-            "resources/read" => self.handle_resource_read(request.params).await?,
+            "resources/read" => match self.handle_resource_read(request.params).await {
+                Ok(result) => result,
+                Err(e) => {
+                    return Ok(JsonRpcResponse {
+                        jsonrpc: "2.0".to_string(),
+                        id: request.id,
+                        result: None,
+                        error: Some(JsonRpcError {
+                            code: -32602,
+                            message: e.to_string(),
+                            data: None,
+                        }),
+                    })
+                }
+            },
             "prompts/list" => self.handle_prompts_list().await?,
-            "prompts/get" => self.handle_prompt_get(request.params).await?,
+            "prompts/get" => match self.handle_prompt_get(request.params).await {
+                Ok(result) => result,
+                Err(e) => {
+                    return Ok(JsonRpcResponse {
+                        jsonrpc: "2.0".to_string(),
+                        id: request.id,
+                        result: None,
+                        error: Some(JsonRpcError {
+                            code: -32602,
+                            message: e.to_string(),
+                            data: None,
+                        }),
+                    })
+                }
+            },
             _ => {
                 return Ok(JsonRpcResponse {
                     jsonrpc: "2.0".to_string(),

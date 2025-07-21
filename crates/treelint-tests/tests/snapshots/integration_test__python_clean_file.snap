@@ -14,11 +14,11 @@ snapshot_kind: text
     }
   ],
   "statistics": {
-    "files_scanned": 2,
+    "files_scanned": 4,
     "files_skipped": 0,
-    "files_with_violations": 1,
+    "files_with_violations": 3,
     "total_duration_ms": 0.0,
-    "total_files": 2,
-    "total_violations": 1
+    "total_files": 4,
+    "total_violations": 7
   }
 }
