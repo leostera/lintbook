@@ -21,7 +21,10 @@ pub mod rs050_reversed_empty_ranges;
 pub mod rs051_self_assignment;
 pub mod rs054_suspicious_splitn;
 pub mod rs059_unit_cmp;
+pub mod rs075_cast_abs_to_unsigned;
+pub mod rs088_duplicated_attributes;
 pub mod rs092_empty_loop;
+pub mod rs095_four_forward_slashes;
 
 use treelint_core::*;
 
@@ -50,6 +53,9 @@ pub fn lints() -> Vec<Box<dyn Rule>> {
         Box::new(rs051_self_assignment::SelfAssignment),
         Box::new(rs054_suspicious_splitn::SuspiciousSplitN),
         Box::new(rs059_unit_cmp::UnitCmp),
+        Box::new(rs075_cast_abs_to_unsigned::CastAbsToUnsigned),
+        Box::new(rs088_duplicated_attributes::DuplicatedAttributes),
         Box::new(rs092_empty_loop::EmptyLoop),
+        Box::new(rs095_four_forward_slashes::FourForwardSlashes),
     ]
 }
