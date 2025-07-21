@@ -2,9 +2,12 @@ pub mod ex1001_exception_names;
 pub mod ex1002_line_endings;
 pub mod ex3001_iex_pry;
 pub mod ex3002_io_inspect;
+pub mod ex3003_variable_names;
+pub mod ex3010_trailing_whitespace;
 pub mod ex4001_unsafe_to_atom;
 pub mod ex5001_function_names;
 pub mod ex5002_module_names;
+pub mod ex5006_dbg;
 
 use treelint_core::Rule;
 
@@ -15,8 +18,11 @@ pub fn lints() -> Vec<Box<dyn Rule>> {
         Box::new(ex1002_line_endings::LineEndings),
         Box::new(ex3001_iex_pry::IExPry),
         Box::new(ex3002_io_inspect::IoInspect),
+        Box::new(ex3003_variable_names::VariableNames),
+        Box::new(ex3010_trailing_whitespace::TrailingWhitespace),
         Box::new(ex4001_unsafe_to_atom::UnsafeToAtom),
         Box::new(ex5001_function_names::FunctionNames),
         Box::new(ex5002_module_names::ModuleNames),
+        Box::new(ex5006_dbg::Dbg),
     ]
 }

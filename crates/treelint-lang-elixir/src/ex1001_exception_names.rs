@@ -282,7 +282,7 @@ mod tests {
     #[test]
     fn test_consistent_suffix_naming() {
         let code = fs::read_to_string(
-            "crates/treelint-tests/fixtures/elixir/exception_names_consistent.ex",
+            "fixtures/exception_names_consistent.ex",
         )
         .expect("Failed to read fixture file");
 
@@ -297,7 +297,7 @@ mod tests {
     #[test]
     fn test_inconsistent_naming_patterns() {
         let code = fs::read_to_string(
-            "crates/treelint-tests/fixtures/elixir/exception_names_violations.ex",
+            "fixtures/exception_names_violations.ex",
         )
         .expect("Failed to read fixture file");
 
@@ -313,7 +313,7 @@ mod tests {
 
     #[test]
     fn test_no_exception_modules() {
-        let code = fs::read_to_string("crates/treelint-tests/fixtures/elixir/no_exceptions.ex")
+        let code = fs::read_to_string("fixtures/no_exceptions.ex")
             .expect("Failed to read fixture file");
 
         let tree = parse_elixir_code(&code);

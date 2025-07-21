@@ -14,6 +14,8 @@ pub mod rs032_mem_replace_with_uninit;
 pub mod rs034_mistyped_literal_suffixes;
 pub mod rs035_modulo_one;
 pub mod rs038_non_octal_unix_permissions;
+pub mod rs041_option_env_unwrap;
+pub mod rs046_possible_missing_comma;
 
 use treelint_core::*;
 
@@ -35,5 +37,7 @@ pub fn lints() -> Vec<Box<dyn Rule>> {
         Box::new(rs034_mistyped_literal_suffixes::MistypedLiteralSuffixes),
         Box::new(rs035_modulo_one::ModuloOne),
         Box::new(rs038_non_octal_unix_permissions::NonOctalUnixPermissions),
+        Box::new(rs041_option_env_unwrap::OptionEnvUnwrap),
+        Box::new(rs046_possible_missing_comma::PossibleMissingComma),
     ]
 }
