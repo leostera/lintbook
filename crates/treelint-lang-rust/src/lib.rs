@@ -22,6 +22,16 @@ pub mod rs051_self_assignment;
 pub mod rs054_suspicious_splitn;
 pub mod rs059_unit_cmp;
 pub mod rs075_cast_abs_to_unsigned;
+pub mod rs055_transmute_null_to_fn;
+pub mod rs056_transmuting_null;
+pub mod rs057_uninit_assumed_init;
+pub mod rs058_uninit_vec;
+pub mod rs060_unit_hash;
+pub mod rs063_unused_io_amount;
+pub mod rs064_useless_attribute;
+pub mod rs065_vec_resize_to_zero;
+pub mod rs079_cast_slice_from_raw_parts;
+pub mod rs081_const_is_empty;
 pub mod rs088_duplicated_attributes;
 pub mod rs092_empty_loop;
 pub mod rs095_four_forward_slashes;
@@ -53,7 +63,17 @@ pub fn lints() -> Vec<Box<dyn Rule>> {
         Box::new(rs051_self_assignment::SelfAssignment),
         Box::new(rs054_suspicious_splitn::SuspiciousSplitN),
         Box::new(rs059_unit_cmp::UnitCmp),
+        Box::new(rs055_transmute_null_to_fn::TransmuteNullToFn),
+        Box::new(rs056_transmuting_null::TransmutingNull),
+        Box::new(rs057_uninit_assumed_init::UninitAssumedInit),
+        Box::new(rs058_uninit_vec::UninitVec),
+        Box::new(rs060_unit_hash::UnitHash),
+        Box::new(rs063_unused_io_amount::UnusedIoAmount),
+        Box::new(rs064_useless_attribute::UselessAttribute),
+        Box::new(rs065_vec_resize_to_zero::VecResizeToZero),
         Box::new(rs075_cast_abs_to_unsigned::CastAbsToUnsigned),
+        Box::new(rs079_cast_slice_from_raw_parts::CastSliceFromRawParts),
+        Box::new(rs081_const_is_empty::ConstIsEmpty),
         Box::new(rs088_duplicated_attributes::DuplicatedAttributes),
         Box::new(rs092_empty_loop::EmptyLoop),
         Box::new(rs095_four_forward_slashes::FourForwardSlashes),
