@@ -45,6 +45,24 @@ pub mod sql044_wildcard_in_count;
 pub mod sql045_operators_spacing;
 pub mod sql046_unnecessary_distinct;
 pub mod sql047_undefined_functions;
+pub mod sql048_performance_anti_patterns;
+pub mod sql049_security_patterns;
+pub mod sql050_data_type_best_practices;
+pub mod sql051_transaction_patterns;
+pub mod sql052_index_usage_hints;
+pub mod sql053_schema_validation;
+pub mod sql054_query_complexity;
+pub mod sql055_temporal_patterns;
+pub mod sql056_error_handling;
+pub mod sql057_stored_procedure_patterns;
+pub mod sql058_view_patterns;
+pub mod sql059_trigger_patterns;
+pub mod sql060_cursor_patterns;
+pub mod sql061_backup_restore_patterns;
+pub mod sql062_partition_patterns;
+pub mod sql063_replication_patterns;
+pub mod sql064_deprecated_features;
+pub mod sql065_compatibility_patterns;
 
 use treelint_core::Rule;
 
@@ -98,5 +116,23 @@ pub fn lints() -> Vec<Box<dyn Rule>> {
         Box::new(sql045_operators_spacing::OperatorsSpacing),
         Box::new(sql046_unnecessary_distinct::UnnecessaryDistinct),
         Box::new(sql047_undefined_functions::UndefinedFunctions),
+        Box::new(sql048_performance_anti_patterns::PerformanceAntiPatterns),
+        Box::new(sql049_security_patterns::SecurityPatterns),
+        Box::new(sql050_data_type_best_practices::DataTypeBestPractices),
+        Box::new(sql051_transaction_patterns::TransactionPatterns),
+        Box::new(sql052_index_usage_hints::IndexUsageHints),
+        Box::new(sql053_schema_validation::SchemaValidation),
+        Box::new(sql054_query_complexity::QueryComplexity),
+        Box::new(sql055_temporal_patterns::TemporalPatterns),
+        Box::new(sql056_error_handling::ErrorHandling),
+        Box::new(sql057_stored_procedure_patterns::StoredProcedurePatterns),
+        Box::new(sql058_view_patterns::ViewPatterns),
+        Box::new(sql059_trigger_patterns::TriggerPatterns),
+        Box::new(sql060_cursor_patterns::CursorPatterns),
+        Box::new(sql061_backup_restore_patterns::BackupRestorePatterns),
+        Box::new(sql062_partition_patterns::PartitionPatterns),
+        Box::new(sql063_replication_patterns::ReplicationPatterns),
+        Box::new(sql064_deprecated_features::DeprecatedFeatures),
+        Box::new(sql065_compatibility_patterns::CompatibilityPatterns),
     ]
 }

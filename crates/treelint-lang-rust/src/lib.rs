@@ -43,6 +43,26 @@ pub mod rs096_from_raw_with_void_ptr;
 pub mod rs101_join_absolute_paths;
 pub mod rs102_let_underscore_future;
 pub mod rs105_manual_unwrap_or_default;
+pub mod rs107_misrefactored_assign_op;
+pub mod rs109_multi_assignments;
+pub mod rs111_mut_range_bound;
+pub mod rs113_needless_character_iteration;
+pub mod rs115_no_effect_replace;
+pub mod rs118_octal_escapes;
+pub mod rs119_path_ends_with_ext;
+pub mod rs120_permissions_set_readonly_false;
+pub mod rs121_pointers_in_nomem_asm_block;
+pub mod rs123_rc_clone_in_vec_init;
+pub mod rs125_repeat_vec_with_capacity;
+pub mod rs126_repr_packed_without_abi;
+pub mod rs127_single_range_in_vec_init;
+pub mod rs128_size_of_ref;
+pub mod rs130_suspicious_assignment_formatting;
+pub mod rs131_suspicious_command_arg_space;
+pub mod rs132_suspicious_doc_comments;
+pub mod rs133_suspicious_else_formatting;
+pub mod rs138_suspicious_unary_op_formatting;
+pub mod rs139_swap_ptr_to_ref;
 pub mod rs092_empty_loop;
 pub mod rs095_four_forward_slashes;
 
@@ -95,6 +115,26 @@ pub fn lints() -> Vec<Box<dyn Rule>> {
         Box::new(rs101_join_absolute_paths::JoinAbsolutePaths),
         Box::new(rs102_let_underscore_future::LetUnderscoreFuture),
         Box::new(rs105_manual_unwrap_or_default::ManualUnwrapOrDefault),
+        Box::new(rs107_misrefactored_assign_op::MisrefactoredAssignOp),
+        Box::new(rs109_multi_assignments::MultiAssignments),
+        Box::new(rs111_mut_range_bound::MutRangeBound),
+        Box::new(rs113_needless_character_iteration::NeedlessCharacterIteration),
+        Box::new(rs115_no_effect_replace::NoEffectReplace),
+        Box::new(rs118_octal_escapes::OctalEscapes),
+        Box::new(rs119_path_ends_with_ext::PathEndsWithExt),
+        Box::new(rs120_permissions_set_readonly_false::PermissionsSetReadonlyFalse),
+        Box::new(rs121_pointers_in_nomem_asm_block::PointersInNomemAsmBlock),
+        Box::new(rs123_rc_clone_in_vec_init::RcCloneInVecInit),
+        Box::new(rs125_repeat_vec_with_capacity::RepeatVecWithCapacity),
+        Box::new(rs126_repr_packed_without_abi::ReprPackedWithoutAbi),
+        Box::new(rs127_single_range_in_vec_init::SingleRangeInVecInit),
+        Box::new(rs128_size_of_ref::SizeOfRef),
+        Box::new(rs130_suspicious_assignment_formatting::SuspiciousAssignmentFormatting),
+        Box::new(rs131_suspicious_command_arg_space::SuspiciousCommandArgSpace),
+        Box::new(rs132_suspicious_doc_comments::SuspiciousDocComments),
+        Box::new(rs133_suspicious_else_formatting::SuspiciousElseFormatting),
+        Box::new(rs138_suspicious_unary_op_formatting::SuspiciousUnaryOpFormatting),
+        Box::new(rs139_swap_ptr_to_ref::SwapPtrToRef),
         Box::new(rs092_empty_loop::EmptyLoop),
         Box::new(rs095_four_forward_slashes::FourForwardSlashes),
     ]
