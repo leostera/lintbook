@@ -19,6 +19,9 @@ pub mod rs041_option_env_unwrap;
 pub mod rs046_possible_missing_comma;
 pub mod rs050_reversed_empty_ranges;
 pub mod rs051_self_assignment;
+pub mod rs054_suspicious_splitn;
+pub mod rs059_unit_cmp;
+pub mod rs092_empty_loop;
 
 use treelint_core::*;
 
@@ -45,5 +48,8 @@ pub fn lints() -> Vec<Box<dyn Rule>> {
         Box::new(rs046_possible_missing_comma::PossibleMissingComma),
         Box::new(rs050_reversed_empty_ranges::ReversedEmptyRanges),
         Box::new(rs051_self_assignment::SelfAssignment),
+        Box::new(rs054_suspicious_splitn::SuspiciousSplitN),
+        Box::new(rs059_unit_cmp::UnitCmp),
+        Box::new(rs092_empty_loop::EmptyLoop),
     ]
 }
