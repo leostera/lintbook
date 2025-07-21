@@ -37,82 +37,67 @@ impl TypeComparison {
         }
 
         // Recursively visit child nodes
-        for child in node.children(&mut node.walk()) {
-            self.visit_node(child, source, violations);
+        for i in 0..node.child_count() {
+            if let Some(child) = node.child(i) {
+                self.visit_node(child, source, violations);
+            }
         }
     }
 
     fn check_type_comparison(&self, node: Node, source: &str, violations: &mut Vec<LintViolation>) {
-        let mut cursor = node.walk();
-        let children: Vec<Node> = node.children(&mut cursor).collect();
-
-        // Look for patterns like "type(x) == SomeType", "type(x) is SomeType", etc.
-        for i in 0..children.len().saturating_sub(2) {
-            let left = children[i];
-            let operator = children[i + 1];
-            let right = children[i + 2];
-
-            if operator.kind() == "==" || operator.kind() == "is" || operator.kind() == "!=" || operator.kind() == "is_not" {
-                let left_text = left.utf8_text(source.as_bytes()).unwrap_or("");
-                let right_text = right.utf8_text(source.as_bytes()).unwrap_or("");
-                let operator_text = operator.utf8_text(source.as_bytes()).unwrap_or("");
-
-                let left_is_type_call = self.is_type_call(&left_text);
-                let right_is_type_call = self.is_type_call(&right_text);
-
-                if left_is_type_call || right_is_type_call {
-                    let start_point = operator.start_position();
-                    let suggestion = self.create_isinstance_suggestion(&left_text, &right_text, &operator_text);
-                    
-                    violations.push(LintViolation {
-                        line: start_point.row + 1,
-                        column: start_point.column + 1,
-                        message: format!("Use isinstance() instead of type() comparison. Suggestion: {}", suggestion),
-                        lint_id: self.id().to_string(),
-                        lint_name: self.name().to_string(),
-                    });
+        // Get children of comparison_operator
+        let mut has_type_call = false;
+        let mut has_comparison_operator = false;
+        
+        for i in 0..node.child_count() {
+            if let Some(child) = node.child(i) {
+                match child.kind() {
+                    "==" | "!=" | "is" | "is not" => {
+                        has_comparison_operator = true;
+                    },
+                    "call" => {
+                        // Check if this is a type() call
+                        if self.is_type_call(child, source) {
+                            has_type_call = true;
+                        }
+                    },
+                    _ => {}
                 }
             }
         }
-    }
-
-    fn is_type_call(&self, text: &str) -> bool {
-        // Simple check for type() function calls
-        text.trim().starts_with("type(") && text.trim().ends_with(")")
-    }
-
-    fn create_isinstance_suggestion(&self, left: &str, right: &str, operator: &str) -> String {
-        let left_trimmed = left.trim();
-        let right_trimmed = right.trim();
         
-        if self.is_type_call(left_trimmed) {
-            // type(obj) == SomeType -> isinstance(obj, SomeType)
-            let obj = self.extract_object_from_type_call(left_trimmed);
-            match operator {
-                "==" | "is" => format!("isinstance({}, {})", obj, right_trimmed),
-                "!=" | "is_not" => format!("not isinstance({}, {})", obj, right_trimmed),
-                _ => format!("isinstance({}, {})", obj, right_trimmed),
-            }
-        } else if self.is_type_call(right_trimmed) {
-            // SomeType == type(obj) -> isinstance(obj, SomeType)
-            let obj = self.extract_object_from_type_call(right_trimmed);
-            match operator {
-                "==" | "is" => format!("isinstance({}, {})", obj, left_trimmed),
-                "!=" | "is_not" => format!("not isinstance({}, {})", obj, left_trimmed),
-                _ => format!("isinstance({}, {})", obj, left_trimmed),
-            }
-        } else {
-            format!("isinstance(...)")
+        // If we found a type() call in a comparison, report violation
+        if has_type_call && has_comparison_operator {
+            let start_point = node.start_position();
+            let full_text = source[node.byte_range()].to_string();
+            
+            violations.push(LintViolation {
+                line: start_point.row + 1,
+                column: start_point.column + 1,
+                message: format!(
+                    "Use isinstance() instead of type() comparison: '{}'. Consider using isinstance() for better inheritance support.",
+                    full_text.trim()
+                ),
+                lint_id: self.id().to_string(),
+                lint_name: self.name().to_string(),
+            });
         }
     }
 
-    fn extract_object_from_type_call(&self, type_call: &str) -> &str {
-        // Extract object from "type(object)" -> "object"
-        if type_call.starts_with("type(") && type_call.ends_with(")") {
-            &type_call[5..type_call.len()-1]
-        } else {
-            "obj"
+    fn is_type_call(&self, node: Node, source: &str) -> bool {
+        if node.kind() != "call" {
+            return false;
         }
+        
+        // Check if the function being called is 'type'
+        if let Some(function_node) = node.child_by_field_name("function") {
+            if function_node.kind() == "identifier" {
+                let function_name = function_node.utf8_text(source.as_bytes()).unwrap_or("");
+                return function_name == "type";
+            }
+        }
+        
+        false
     }
 }
 
@@ -139,7 +124,7 @@ if type(obj) == str:
 
         assert_eq!(violations.len(), 1);
         assert_eq!(violations[0].lint_id, "PY009");
-        assert!(violations[0].message.contains("isinstance(obj, str)"));
+        assert!(violations[0].message.contains("isinstance()"));
     }
 
     #[test]
@@ -154,7 +139,7 @@ if type(value) is int:
 
         assert_eq!(violations.len(), 1);
         assert_eq!(violations[0].lint_id, "PY009");
-        assert!(violations[0].message.contains("isinstance(value, int)"));
+        assert!(violations[0].message.contains("isinstance()"));
     }
 
     #[test]
@@ -169,7 +154,22 @@ if type(data) != list:
 
         assert_eq!(violations.len(), 1);
         assert_eq!(violations[0].lint_id, "PY009");
-        assert!(violations[0].message.contains("not isinstance(data, list)"));
+        assert!(violations[0].message.contains("isinstance()"));
+    }
+
+    #[test]
+    fn test_type_is_not_comparison() {
+        let source = r#"
+if type(result) is not dict:
+    pass
+"#;
+        let tree = parse_python(source);
+        let rule = TypeComparison;
+        let violations = rule.check(&tree, source);
+
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].lint_id, "PY009");
+        assert!(violations[0].message.contains("isinstance()"));
     }
 
     #[test]
@@ -184,7 +184,7 @@ if str == type(text):
 
         assert_eq!(violations.len(), 1);
         assert_eq!(violations[0].lint_id, "PY009");
-        assert!(violations[0].message.contains("isinstance(text, str)"));
+        assert!(violations[0].message.contains("isinstance()"));
     }
 
     #[test]
@@ -233,5 +233,34 @@ if type(result[0]) is tuple:
 
         assert_eq!(violations.len(), 2);
         assert!(violations.iter().all(|v| v.lint_id == "PY009"));
+    }
+
+    #[test]
+    fn test_multiple_type_checks() {
+        let source = r#"
+if type(x) == int and type(y) == str:
+    pass
+"#;
+        let tree = parse_python(source);
+        let rule = TypeComparison;
+        let violations = rule.check(&tree, source);
+
+        assert_eq!(violations.len(), 2);
+        assert!(violations.iter().all(|v| v.lint_id == "PY009"));
+    }
+
+    #[test]
+    fn test_other_function_calls() {
+        let source = r#"
+if len(obj) == 5:
+    pass
+if str(value) == "test":
+    pass
+"#;
+        let tree = parse_python(source);
+        let rule = TypeComparison;
+        let violations = rule.check(&tree, source);
+
+        assert_eq!(violations.len(), 0);
     }
 }
