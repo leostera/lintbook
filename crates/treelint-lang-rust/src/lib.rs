@@ -32,7 +32,17 @@ pub mod rs064_useless_attribute;
 pub mod rs065_vec_resize_to_zero;
 pub mod rs079_cast_slice_from_raw_parts;
 pub mod rs081_const_is_empty;
+pub mod rs082_crate_in_macro_def;
+pub mod rs083_deprecated_clippy_cfg_attr;
+pub mod rs087_duplicate_mod;
 pub mod rs088_duplicated_attributes;
+pub mod rs089_empty_docs;
+pub mod rs090_empty_line_after_doc_comments;
+pub mod rs091_empty_line_after_outer_attr;
+pub mod rs096_from_raw_with_void_ptr;
+pub mod rs101_join_absolute_paths;
+pub mod rs102_let_underscore_future;
+pub mod rs105_manual_unwrap_or_default;
 pub mod rs092_empty_loop;
 pub mod rs095_four_forward_slashes;
 
@@ -74,7 +84,17 @@ pub fn lints() -> Vec<Box<dyn Rule>> {
         Box::new(rs075_cast_abs_to_unsigned::CastAbsToUnsigned),
         Box::new(rs079_cast_slice_from_raw_parts::CastSliceFromRawParts),
         Box::new(rs081_const_is_empty::ConstIsEmpty),
+        Box::new(rs082_crate_in_macro_def::CrateInMacroDef),
+        Box::new(rs083_deprecated_clippy_cfg_attr::DeprecatedClippyCfgAttr),
+        Box::new(rs087_duplicate_mod::DuplicateMod),
         Box::new(rs088_duplicated_attributes::DuplicatedAttributes),
+        Box::new(rs089_empty_docs::EmptyDocs),
+        Box::new(rs090_empty_line_after_doc_comments::EmptyLineAfterDocComments),
+        Box::new(rs091_empty_line_after_outer_attr::EmptyLineAfterOuterAttr),
+        Box::new(rs096_from_raw_with_void_ptr::FromRawWithVoidPtr),
+        Box::new(rs101_join_absolute_paths::JoinAbsolutePaths),
+        Box::new(rs102_let_underscore_future::LetUnderscoreFuture),
+        Box::new(rs105_manual_unwrap_or_default::ManualUnwrapOrDefault),
         Box::new(rs092_empty_loop::EmptyLoop),
         Box::new(rs095_four_forward_slashes::FourForwardSlashes),
     ]
