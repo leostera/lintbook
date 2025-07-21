@@ -1,5 +1,6 @@
 pub mod ex1001_exception_names;
 pub mod ex1002_line_endings;
+pub mod ex1003_multi_alias_import_require_use;
 pub mod ex3001_iex_pry;
 pub mod ex3002_io_inspect;
 pub mod ex3003_variable_names;
@@ -17,6 +18,7 @@ pub fn lints() -> Vec<Box<dyn Rule>> {
     vec![
         Box::new(ex1001_exception_names::ExceptionNames),
         Box::new(ex1002_line_endings::LineEndings),
+        Box::new(ex1003_multi_alias_import_require_use::MultiAliasImportRequireUse),
         Box::new(ex3001_iex_pry::IExPry),
         Box::new(ex3002_io_inspect::IoInspect),
         Box::new(ex3003_variable_names::VariableNames),
