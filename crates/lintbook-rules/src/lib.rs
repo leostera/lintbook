@@ -17,6 +17,7 @@ use tree_sitter::{Node, Parser};
 
 const SCHEMA_VERSION: u32 = 2;
 const FACT_SCHEMA_VERSION: u32 = 9;
+const BINCODE_CACHE_FORMAT_VERSION: u32 = 2;
 const LINTBOOK_DIR: &str = ".lintbook";
 const RULES_DIR: &str = "rules";
 const GEN_DIR: &str = "gen";
@@ -709,7 +710,11 @@ pub fn cache_dir(repo_root: &Path) -> PathBuf {
 fn prepared_query_cache_dir(repo_root: &Path) -> PathBuf {
     cache_dir(repo_root)
         .join(PREPARED_QUERIES_DIR)
-        .join(format!("v{}", datafox::PREPARED_QUERY_FORMAT_VERSION))
+        .join(format!(
+            "datafox-v{}",
+            datafox::PREPARED_QUERY_FORMAT_VERSION
+        ))
+        .join(format!("bincode-v{BINCODE_CACHE_FORMAT_VERSION}"))
 }
 
 #[derive(Clone)]
@@ -801,7 +806,10 @@ fn bincode_encode<T: Serialize>(
 fn bincode_decode<T: DeserializeOwned>(
     bytes: &[u8],
 ) -> std::result::Result<T, bincode::error::DecodeError> {
-    let (value, bytes_read) = bincode::serde::decode_from_slice(bytes, bincode::config::legacy())?;
+    let (value, bytes_read) = std::panic::catch_unwind(|| {
+        bincode::serde::decode_from_slice(bytes, bincode::config::legacy())
+    })
+    .map_err(|_| bincode::error::DecodeError::Other("bincode decode panicked"))??;
     if bytes_read == bytes.len() {
         Ok(value)
     } else {
@@ -1755,6 +1763,7 @@ fn fact_cache_path(
 ) -> PathBuf {
     cache_dir(repo_root)
         .join(FACTS_DIR)
+        .join(format!("bincode-v{BINCODE_CACHE_FORMAT_VERSION}"))
         .join(language)
         .join(format!("{source_sha256}-{predicate_fingerprint}.bin"))
 }
