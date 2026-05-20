@@ -72,6 +72,7 @@ cargo flamegraph \
   -p lintbook-cli \
   -b lintbook \
   -F "$freq" \
+  --ignore-status \
   -o "$output" \
   --title "lintbook check" \
   --notes "repo=${repo_root} generated_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \

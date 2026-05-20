@@ -15,6 +15,21 @@ Use the same command, cache state, and repo revision before and after an optimiz
 
 On macOS, `cargo flamegraph` may use DTrace and may require root privileges. Do not use `--root` or sudo-like paths without user approval.
 
+If `cargo flamegraph` records successfully but fails while collapsing xctrace XML, keep the timing result and fall back to direct xctrace export:
+
+```bash
+/Applications/Xcode.app/Contents/Developer/usr/bin/xctrace record \
+  --template 'Time Profiler' \
+  --output /tmp/lintbook-check-json.trace \
+  --target-stdout /tmp/lintbook-xctrace.stdout \
+  --launch -- target/release/lintbook check --json
+
+/Applications/Xcode.app/Contents/Developer/usr/bin/xctrace export \
+  --input /tmp/lintbook-check-json.trace \
+  --xpath '/trace-toc/run[@number="1"]/data/table[@schema="time-profile"]' \
+  > /tmp/lintbook-check-json-time.xml
+```
+
 The first profile often includes setup noise. If a change is small, take two profiles and compare the second run from each revision.
 
 Prefer profiles that exercise the product path:
