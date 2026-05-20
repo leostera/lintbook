@@ -362,6 +362,9 @@ fn build_codex_compile_prompt(
     let mut prompt = String::from(
         r#"You are generating lintbook Datafox query files.
 
+Assume you are running inside a user's project with the `lintbook` binary installed on PATH.
+Do not use `cargo run`, `cargo test`, or paths from the lintbook source repository.
+
 For each incomplete rule below:
 - Read the Markdown rule intent.
 - Use the Datafox grammar, fact schema, examples, and testing workflow in the guide below.
@@ -370,7 +373,7 @@ For each incomplete rule below:
 - Do not edit the .md files unless the rule intent is impossible to understand.
 - Do not hand-edit .json compiled artifacts.
 - Test the query with at least one positive example and one negative example before finishing.
-- After writing .df files, run `cargo run --quiet -p lintbook-cli --bin lintbook -- compile` without `--agent`.
+- After writing .df files, run `lintbook compile` without `--agent`.
 - Stop as soon as the new lint rule compiles successfully and your focused positive/negative checks pass.
 - Do not fix, refactor, or silence every existing file that the new lint rule reports.
 
@@ -1195,8 +1198,12 @@ We don't want dbg! macro calls in production code.
         assert!(prompt.contains("node(Node, Kind, StartLine, StartColumn, EndLine, EndColumn)"));
         assert!(prompt.contains("Example rules"));
         assert!(prompt.contains("Testing workflow"));
-        assert!(prompt.contains("dump-ast --lang rust"));
-        assert!(prompt.contains("check --output json <positive.rs>"));
+        assert!(prompt.contains("`lintbook` binary installed on PATH"));
+        assert!(prompt.contains("Do not use `cargo run`, `cargo test`"));
+        assert!(prompt.contains("lintbook dump-ast --lang rust"));
+        assert!(prompt.contains("lintbook compile"));
+        assert!(prompt.contains("lintbook check --output json <positive.rs>"));
+        assert!(!prompt.contains("cargo run --quiet -p lintbook-cli"));
         assert!(prompt.contains("Stop as soon as the new lint rule compiles successfully"));
         assert!(prompt.contains("Do not fix, refactor, or silence every existing file"));
         assert!(prompt.contains(".lintbook/gen/no-dbg.df"));

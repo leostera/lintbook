@@ -601,11 +601,11 @@ Example rules:
 Testing workflow:
 - Use the Markdown intent first. If the rule includes examples, turn those into positive and negative checks.
 - If examples are not provided, create at least one minimal Rust snippet that should match and one that should not match.
-- Inspect tree-sitter node kinds and fields with `cargo run --quiet -p lintbook-cli --bin lintbook -- dump-ast --lang rust <path>`.
-- You can inspect a tiny snippet through stdin with `printf 'fn main() { dbg!(1); }\n' | cargo run --quiet -p lintbook-cli --bin lintbook -- dump-ast --lang rust`.
-- After writing the .df file, run `cargo run --quiet -p lintbook-cli --bin lintbook -- compile` without `--agent`.
-- Verify a positive example with `cargo run --quiet -p lintbook-cli --bin lintbook -- check --output json <positive.rs>`. A matching lint exits nonzero; inspect stdout and confirm the rule id appears.
-- Verify a negative example with `cargo run --quiet -p lintbook-cli --bin lintbook -- check --output json <negative.rs>` and confirm it exits zero with no violation for the rule id.
+- Inspect tree-sitter node kinds and fields with `lintbook dump-ast --lang rust <path>`.
+- You can inspect a tiny snippet through stdin with `printf 'fn main() { dbg!(1); }\n' | lintbook dump-ast --lang rust`.
+- After writing the .df file, run `lintbook compile` without `--agent`.
+- Verify a positive example with `lintbook check --output json <positive.rs>`. A matching lint exits nonzero; inspect stdout and confirm the rule id appears.
+- Verify a negative example with `lintbook check --output json <negative.rs>` and confirm it exits zero with no violation for the rule id.
 - Stop once the rule compiles successfully and the focused positive/negative checks behave as expected.
 - Do not try to fix every repository file that the new rule reports.
 - Prefer temporary example files outside the repository. If sandboxing requires repository-local files, use a clearly temporary path and remove it before finishing.
