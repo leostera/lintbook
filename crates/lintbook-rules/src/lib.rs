@@ -1259,10 +1259,15 @@ fn evaluate_rules(
 ) -> Result<Vec<LintViolation>> {
     let mut violations = Vec::new();
     let mut seen = BTreeSet::new();
+    let evaluator = Evaluator::builder()
+        .with_store(&storage)
+        .build()
+        .context("Failed to build generated rule evaluator")?;
 
     for rule in rules {
         for query in &rule.queries {
-            for substitution in Evaluator::evaluate_in_memory(&storage, query)
+            for substitution in evaluator
+                .eval(query)
                 .with_context(|| format!("Failed to evaluate generated rule `{}`", rule.id))?
             {
                 let Some(Value::Integer(node_id)) = substitution.lookup(&rule.primary) else {
