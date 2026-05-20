@@ -1,0 +1,2 @@
+node(Node, "not_operator", _, _, _, _), child(Node, Comparison, _), node(Comparison, "comparison_operator", _, _, _, _), child(Comparison, Operator, _), text(Operator, "is");
+node(Node, "not_operator", _, _, _, _), child(Node, Parenthesized, _), node(Parenthesized, "parenthesized_expression", _, _, _, _), child(Parenthesized, Comparison, _), node(Comparison, "comparison_operator", _, _, _, _), child(Comparison, Operator, _), text(Operator, "is")

@@ -516,6 +516,34 @@ const BUILTIN_RULES: &[BuiltinRuleAsset] = &[
         markdown: include_str!("../builtin/python/py005-none-comparison.md"),
         query: include_str!("../builtin/python/py005-none-comparison.df"),
     },
+    BuiltinRuleAsset {
+        name: "true-false-comparison",
+        markdown_path: "builtin/python/py006-true-false-comparison.md",
+        query_path: "builtin/python/py006-true-false-comparison.df",
+        markdown: include_str!("../builtin/python/py006-true-false-comparison.md"),
+        query: include_str!("../builtin/python/py006-true-false-comparison.df"),
+    },
+    BuiltinRuleAsset {
+        name: "not-in-test",
+        markdown_path: "builtin/python/py007-not-in-test.md",
+        query_path: "builtin/python/py007-not-in-test.df",
+        markdown: include_str!("../builtin/python/py007-not-in-test.md"),
+        query: include_str!("../builtin/python/py007-not-in-test.df"),
+    },
+    BuiltinRuleAsset {
+        name: "not-is-test",
+        markdown_path: "builtin/python/py008-not-is-test.md",
+        query_path: "builtin/python/py008-not-is-test.df",
+        markdown: include_str!("../builtin/python/py008-not-is-test.md"),
+        query: include_str!("../builtin/python/py008-not-is-test.df"),
+    },
+    BuiltinRuleAsset {
+        name: "type-comparison",
+        markdown_path: "builtin/python/py009-type-comparison.md",
+        query_path: "builtin/python/py009-type-comparison.df",
+        markdown: include_str!("../builtin/python/py009-type-comparison.md"),
+        query: include_str!("../builtin/python/py009-type-comparison.df"),
+    },
 ];
 
 pub const RULE_AUTHORING_GUIDE: &str = r#"lintbook custom rules are Rust-only in this version.
@@ -3037,7 +3065,7 @@ Avoid dbg! in committed code.
     #[test]
     fn compiles_embedded_builtin_rules() {
         let rules = compile_builtin_rules().unwrap();
-        assert_eq!(rules.len(), 70);
+        assert_eq!(rules.len(), 74);
         assert!(rules.iter().any(|rule| {
             rule.id == "RS013"
                 && rule.name == "eq-op"
@@ -3520,6 +3548,61 @@ fn main() {
                     "if x is None:\n    pass\n",
                     "if y is not None:\n    pass\n",
                     "if x == 5:\n    pass\n",
+                    "if value == 'None':\n    pass\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "PY006",
+                positives: &[
+                    "if x == True:\n    pass\n",
+                    "if result == False:\n    pass\n",
+                    "if True != condition:\n    pass\n",
+                    "if value != False:\n    pass\n",
+                ],
+                negatives: &[
+                    "if x:\n    pass\n",
+                    "if not y:\n    pass\n",
+                    "if x == 5:\n    pass\n",
+                    "if result == 'True':\n    pass\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "PY007",
+                positives: &[
+                    "if not x in items:\n    pass\n",
+                    "if not (y in collection):\n    pass\n",
+                ],
+                negatives: &[
+                    "if x not in items:\n    pass\n",
+                    "if not x == y:\n    pass\n",
+                    "if not x > 5:\n    pass\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "PY008",
+                positives: &[
+                    "if not x is None:\n    pass\n",
+                    "if not (result is expected):\n    pass\n",
+                ],
+                negatives: &[
+                    "if x is not None:\n    pass\n",
+                    "if not x == y:\n    pass\n",
+                    "if not x in items:\n    pass\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "PY009",
+                positives: &[
+                    "if type(obj) == str:\n    pass\n",
+                    "if type(value) is int:\n    pass\n",
+                    "if type(data) != list:\n    pass\n",
+                    "if type(result) is not dict:\n    pass\n",
+                    "if str == type(text):\n    pass\n",
+                ],
+                negatives: &[
+                    "if isinstance(obj, str):\n    pass\n",
+                    "if obj == 'hello':\n    pass\n",
+                    "if len(obj) == 5:\n    pass\n",
                 ],
             },
         ];

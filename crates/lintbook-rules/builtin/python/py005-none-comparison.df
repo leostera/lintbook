@@ -1,1 +1,1 @@
-node(Node, "comparison_operator", _, _, _, _), text(Node, Text), matchesRegex(Text, "(^|[^A-Za-z_])None\s*(==|!=)|(==|!=)\s*None($|[^A-Za-z_])")
+node(Node, "comparison_operator", _, _, _, _), child(Node, Operator, _), text(Operator, OperatorText), matchesRegex(OperatorText, "^(==|!=)$"), child(Node, NoneValue, _), node(NoneValue, "none", _, _, _, _)

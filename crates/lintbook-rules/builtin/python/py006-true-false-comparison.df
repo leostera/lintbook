@@ -1,0 +1,1 @@
+node(Node, "comparison_operator", _, _, _, _), child(Node, Operator, _), text(Operator, OperatorText), matchesRegex(OperatorText, "^(==|!=)$"), child(Node, Boolean, _), node(Boolean, BooleanKind, _, _, _, _), matchesRegex(BooleanKind, "^(true|false)$")

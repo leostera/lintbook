@@ -101,4 +101,8 @@ The parked Python crate remains in the tree while rules are converted gradually.
 | --- | --- | --- | --- |
 | PY003 | no-os-getenv | converted-enabled | Uses Python call/attribute tree-sitter fields. |
 | PY004 | no-bare-except | converted-enabled | Uses except-clause text matching. |
-| PY005 | none-comparison | converted-enabled | Uses comparison-operator text matching. |
+| PY005 | none-comparison | converted-enabled | Uses comparison operator and `none` node facts. |
+| PY006 | true-false-comparison | converted-enabled | Uses comparison operator and boolean node facts. |
+| PY007 | not-in-test | converted-enabled | Uses `not_operator` over direct or parenthesized `in` comparisons. |
+| PY008 | not-is-test | converted-enabled | Uses `not_operator` over direct or parenthesized `is` comparisons. |
+| PY009 | type-comparison | converted-enabled | Uses comparison operators over `type(...)` call children. |
