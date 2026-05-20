@@ -1,7 +1,7 @@
 use anyhow::{anyhow, bail, Context, Result};
 use datafox::{
-    Clause, DatafoxClient, DatafoxConfig, DatafoxEnvironment, InMemoryStorage, PlanningCache,
-    PreparedQuery, Query, Substitution, Term, Value,
+    Clause, DatafoxClient, DatafoxConfig, DatafoxEnvironment, InMemoryPreparedQueryStorage,
+    InMemoryStorage, PreparedQuery, Query, Substitution, Term, Value,
 };
 use lintbook_config::LintbookConfig;
 use lintbook_core::{LintResult, LintStatus, LintViolation};
@@ -1051,7 +1051,7 @@ impl GeneratedRuleRunner {
     ) -> Result<Self> {
         let rules = load_all_rules(repo_root, config)?;
         let datafox_environment = DatafoxEnvironment::builder()
-            .with_planning_cache(PlanningCache::unbounded())
+            .with_prepared_query_storage(InMemoryPreparedQueryStorage::unbounded())
             .build();
         let mut rules_by_language: HashMap<Grammar, Vec<PreparedCompiledRule>> = HashMap::new();
         for rule in rules {
@@ -1391,7 +1391,7 @@ fn run_rules_on_file_sync(
     rules: &[CompiledRule],
 ) -> Result<Vec<LintViolation>> {
     let datafox_environment = DatafoxEnvironment::builder()
-        .with_planning_cache(PlanningCache::unbounded())
+        .with_prepared_query_storage(InMemoryPreparedQueryStorage::unbounded())
         .build();
     let rules = prepare_compiled_rules(rules.iter().cloned(), &datafox_environment)?;
     run_rules_on_file_sync_with_profile(
