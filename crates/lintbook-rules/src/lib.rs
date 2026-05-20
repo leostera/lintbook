@@ -1,5 +1,7 @@
 use anyhow::{anyhow, bail, Context, Result};
-use datafox::{Clause, Evaluator, InMemoryStorage, Query, Substitution, Term, Value};
+use datafox::{
+    Clause, DatafoxClient, DatafoxConfig, InMemoryStorage, Query, Substitution, Term, Value,
+};
 use lintbook_config::LintbookConfig;
 use lintbook_core::{LintResult, LintStatus, LintViolation};
 use lintbook_lang::Grammar;
@@ -970,23 +972,24 @@ impl GeneratedRuleEvaluationProfile {
         }
     }
 
-    fn evaluator_for<'store>(&self, storage: &'store InMemoryStorage) -> Result<Evaluator<'store>> {
-        let builder = Evaluator::builder().with_store(storage);
-        let builder = match *self {
-            Self::Serial => builder.serial(),
+    fn client_for<'store>(
+        &self,
+        storage: &'store InMemoryStorage,
+    ) -> Result<DatafoxClient<'store>> {
+        let config = DatafoxConfig::new(storage);
+        let config = match *self {
+            Self::Serial => config.serial(),
             Self::Parallel { seed_threshold } => {
-                let builder = builder.parallel();
+                let config = config.parallel();
                 if let Some(seed_threshold) = seed_threshold {
-                    builder.seed_threshold(seed_threshold)
+                    config.seed_threshold(seed_threshold)
                 } else {
-                    builder
+                    config
                 }
             }
         };
 
-        builder
-            .build()
-            .context("Failed to build generated rule evaluator")
+        DatafoxClient::new(config).context("Failed to build generated rule evaluator")
     }
 }
 
@@ -1355,11 +1358,11 @@ fn evaluate_rules(
 ) -> Result<Vec<LintViolation>> {
     let mut violations = Vec::new();
     let mut seen = BTreeSet::new();
-    let evaluator = evaluation_profile.evaluator_for(&storage)?;
+    let datafox = evaluation_profile.client_for(&storage)?;
 
     for rule in rules {
         for query in &rule.queries {
-            for substitution in evaluator
+            for substitution in datafox
                 .eval(query)
                 .with_context(|| format!("Failed to evaluate generated rule `{}`", rule.id))?
             {
