@@ -606,6 +606,8 @@ Testing workflow:
 - After writing the .df file, run `cargo run --quiet -p lintbook-cli --bin lintbook -- compile` without `--agent`.
 - Verify a positive example with `cargo run --quiet -p lintbook-cli --bin lintbook -- check --output json <positive.rs>`. A matching lint exits nonzero; inspect stdout and confirm the rule id appears.
 - Verify a negative example with `cargo run --quiet -p lintbook-cli --bin lintbook -- check --output json <negative.rs>` and confirm it exits zero with no violation for the rule id.
+- Stop once the rule compiles successfully and the focused positive/negative checks behave as expected.
+- Do not try to fix every repository file that the new rule reports.
 - Prefer temporary example files outside the repository. If sandboxing requires repository-local files, use a clearly temporary path and remove it before finishing.
 "#;
 

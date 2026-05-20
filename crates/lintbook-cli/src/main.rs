@@ -371,6 +371,8 @@ For each incomplete rule below:
 - Do not hand-edit .json compiled artifacts.
 - Test the query with at least one positive example and one negative example before finishing.
 - After writing .df files, run `cargo run --quiet -p lintbook-cli --bin lintbook -- compile` without `--agent`.
+- Stop as soon as the new lint rule compiles successfully and your focused positive/negative checks pass.
+- Do not fix, refactor, or silence every existing file that the new lint rule reports.
 
 Authoring guide:
 "#,
@@ -1195,6 +1197,8 @@ We don't want dbg! macro calls in production code.
         assert!(prompt.contains("Testing workflow"));
         assert!(prompt.contains("dump-ast --lang rust"));
         assert!(prompt.contains("check --output json <positive.rs>"));
+        assert!(prompt.contains("Stop as soon as the new lint rule compiles successfully"));
+        assert!(prompt.contains("Do not fix, refactor, or silence every existing file"));
         assert!(prompt.contains(".lintbook/gen/no-dbg.df"));
         assert!(prompt.contains("We don't want dbg! macro calls in production code."));
     }
