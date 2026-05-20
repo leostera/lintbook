@@ -621,6 +621,41 @@ const BUILTIN_RULES: &[BuiltinRuleAsset] = &[
         markdown: include_str!("../builtin/python/py025-raise-not-implemented.md"),
         query: include_str!("../builtin/python/py025-raise-not-implemented.df"),
     },
+    BuiltinRuleAsset {
+        name: "return-in-init",
+        markdown_path: "builtin/python/py026-return-in-init.md",
+        query_path: "builtin/python/py026-return-in-init.df",
+        markdown: include_str!("../builtin/python/py026-return-in-init.md"),
+        query: include_str!("../builtin/python/py026-return-in-init.df"),
+    },
+    BuiltinRuleAsset {
+        name: "continue-in-finally",
+        markdown_path: "builtin/python/py028-continue-in-finally.md",
+        query_path: "builtin/python/py028-continue-in-finally.df",
+        markdown: include_str!("../builtin/python/py028-continue-in-finally.md"),
+        query: include_str!("../builtin/python/py028-continue-in-finally.df"),
+    },
+    BuiltinRuleAsset {
+        name: "duplicate-bases",
+        markdown_path: "builtin/python/py029-duplicate-bases.md",
+        query_path: "builtin/python/py029-duplicate-bases.df",
+        markdown: include_str!("../builtin/python/py029-duplicate-bases.md"),
+        query: include_str!("../builtin/python/py029-duplicate-bases.df"),
+    },
+    BuiltinRuleAsset {
+        name: "invalid-all-object",
+        markdown_path: "builtin/python/py030-invalid-all-object.md",
+        query_path: "builtin/python/py030-invalid-all-object.df",
+        markdown: include_str!("../builtin/python/py030-invalid-all-object.md"),
+        query: include_str!("../builtin/python/py030-invalid-all-object.df"),
+    },
+    BuiltinRuleAsset {
+        name: "invalid-all-format",
+        markdown_path: "builtin/python/py031-invalid-all-format.md",
+        query_path: "builtin/python/py031-invalid-all-format.df",
+        markdown: include_str!("../builtin/python/py031-invalid-all-format.md"),
+        query: include_str!("../builtin/python/py031-invalid-all-format.df"),
+    },
 ];
 
 pub const RULE_AUTHORING_GUIDE: &str = r#"lintbook custom rules are Rust-only in this version.
@@ -3142,7 +3177,7 @@ Avoid dbg! in committed code.
     #[test]
     fn compiles_embedded_builtin_rules() {
         let rules = compile_builtin_rules().unwrap();
-        assert_eq!(rules.len(), 85);
+        assert_eq!(rules.len(), 90);
         assert!(rules.iter().any(|rule| {
             rule.id == "RS013"
                 && rule.name == "eq-op"
@@ -3819,6 +3854,67 @@ fn main() {
                     "def my_method():\n    raise NotImplementedError()\n",
                     "def test():\n    raise ValueError('Invalid value')\n",
                     "result = NotImplemented\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "PY026",
+                positives: &[
+                    "class BadClass:\n    def __init__(self):\n        return self.value\n",
+                    "class ConditionalReturn:\n    def __init__(self, data):\n        if data is None:\n            return\n",
+                ],
+                negatives: &[
+                    "class GoodClass:\n    def __init__(self):\n        self.value = 42\n",
+                    "class WithNew:\n    def __new__(cls, value):\n        return None\n",
+                    "class MethodsWithReturns:\n    def get_value(self):\n        return self.value\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "PY028",
+                positives: &[
+                    "def bad_function():\n    for i in range(10):\n        try:\n            process(i)\n        finally:\n            continue\n",
+                    "async def bad_async():\n    for i in range(10):\n        try:\n            await process(i)\n        finally:\n            continue\n",
+                ],
+                negatives: &[
+                    "def good_function():\n    for i in range(10):\n        try:\n            continue\n        finally:\n            cleanup()\n",
+                    "def function_with_break():\n    try:\n        process()\n    finally:\n        break\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "PY029",
+                positives: &[
+                    "class BadClass(BaseClass, BaseClass):\n    pass\n",
+                    "class AttributeAccess(package.module.Class, SomeOther, package.module.Class):\n    pass\n",
+                ],
+                negatives: &[
+                    "class GoodClass(BaseClass):\n    pass\n",
+                    "class MultipleUnique(A, B, C):\n    pass\n",
+                    "class WithMetaclass(Base, metaclass=Meta):\n    pass\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "PY030",
+                positives: &[
+                    "__all__ = ['valid_string', 123, 'another_valid']\n",
+                    "__all__ = ('item1', 'item2')\n",
+                    "__all__ = ['valid', variable_name]\n",
+                    "__all__ = [f'formatted_{var}']\n",
+                ],
+                negatives: &[
+                    "__all__ = ['public_function', 'PublicClass']\n",
+                    "__all__ = []\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "PY031",
+                positives: &[
+                    "def my_function():\n    __all__ = ['bad']\n",
+                    "__all__ = ['initial']\n__all__.append('dynamic')\n",
+                    "__all__ = ['start']\n__all__ += ['added']\n",
+                    "if some_condition:\n    __all__ = ['conditional']\n",
+                ],
+                negatives: &[
+                    "__all__ = ['public_function', 'PublicClass']\n",
+                    "__all__ = []\n",
                 ],
             },
         ];

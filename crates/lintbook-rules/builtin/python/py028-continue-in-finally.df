@@ -1,0 +1,1 @@
+node(Finally, "finally_clause", _, _, _, _), descendant(Finally, Node), node(Node, "continue_statement", _, _, _, _)

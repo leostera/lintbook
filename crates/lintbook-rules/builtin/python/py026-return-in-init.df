@@ -1,0 +1,1 @@
+node(Function, "function_definition", _, _, _, _), field(Function, "name", Name), text(Name, "__init__"), descendant(Function, Node), node(Node, "return_statement", _, _, _, _)

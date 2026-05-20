@@ -1,0 +1,4 @@
+node(Node, "assignment", _, _, _, _), field(Node, "left", Left), text(Left, "__all__"), parent(Node, Statement), parent(Statement, Scope), node(Scope, ScopeKind, _, _, _, _), notMatchesRegex(ScopeKind, "^module$");
+node(Node, "call", _, _, _, _), field(Node, "function", Function), node(Function, "attribute", _, _, _, _), field(Function, "object", Object), text(Object, "__all__");
+node(Node, "augmented_assignment", _, _, _, _), field(Node, "left", Left), text(Left, "__all__");
+node(Node, "named_expression", _, _, _, _), child(Node, Target, _), text(Target, "__all__")

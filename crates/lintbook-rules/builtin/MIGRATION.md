@@ -117,3 +117,8 @@ The parked Python crate remains in the tree while rules are converted gradually.
 | PY019 | if-tuple | converted-enabled | Uses if/elif tuple child facts. |
 | PY024 | default-except-not-last | converted-enabled | Uses direct try/except child order and except-clause text. |
 | PY025 | raise-not-implemented | converted-enabled | Uses raise statement child shapes. |
+| PY026 | return-in-init | converted-enabled | Uses function name fields and descendant return statements. |
+| PY028 | continue-in-finally | converted-enabled | Uses finally-clause descendants. |
+| PY029 | duplicate-bases | converted-enabled | Uses class argument list base text equality. |
+| PY030 | invalid-all-object | converted-enabled | Uses `__all__` assignment value and element kind facts. |
+| PY031 | invalid-all-format | converted-enabled | Uses `__all__` assignment parents and mutation call shapes. |
