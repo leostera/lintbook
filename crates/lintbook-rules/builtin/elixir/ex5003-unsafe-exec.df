@@ -1,0 +1,5 @@
+node(Node, "call", _, _, _, _), child(Node, Function, 0), text(Function, "System.shell");
+node(Node, "call", _, _, _, _), child(Node, Function, 0), text(Function, ":os.cmd");
+node(Node, "call", _, _, _, _), child(Node, Function, 0), text(Function, "System.cmd"), child(Node, Args, 1), node(Args, "arguments", _, _, _, _), text(Args, ArgsText), matchesRegex(ArgsText, "(user|input|param|request|query|data|arg|command|cmd|;|&&)");
+node(Node, "call", _, _, _, _), child(Node, Function, 0), text(Function, "Port.open"), child(Node, Args, 1), node(Args, "arguments", _, _, _, _), text(Args, ArgsText), matchesRegex(ArgsText, "(user|input|param|request|query|data|arg|command|cmd|;|&&)");
+node(Node, "call", _, _, _, _), child(Node, Function, 0), text(Function, ":erlang.open_port"), child(Node, Args, 1), node(Args, "arguments", _, _, _, _), text(Args, ArgsText), matchesRegex(ArgsText, "(user|input|param|request|query|data|arg|command|cmd|;|&&)")

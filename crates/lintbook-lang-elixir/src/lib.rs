@@ -7,9 +7,6 @@ pub mod ex1006_space_in_parentheses;
 pub mod ex1007_tabs_or_spaces;
 pub mod ex1008_unused_variable_names;
 pub mod ex3003_variable_names;
-pub mod ex5001_function_names;
-pub mod ex5002_module_names;
-pub mod ex5003_unsafe_exec;
 
 use lintbook_core::Rule;
 
@@ -25,8 +22,5 @@ pub fn lints() -> Vec<Box<dyn Rule>> {
         Box::new(ex1007_tabs_or_spaces::TabsOrSpaces),
         Box::new(ex1008_unused_variable_names::UnusedVariableNames),
         Box::new(ex3003_variable_names::VariableNames),
-        Box::new(ex5001_function_names::FunctionNames),
-        Box::new(ex5002_module_names::ModuleNames),
-        Box::new(ex5003_unsafe_exec::UnsafeExec),
     ]
 }

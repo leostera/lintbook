@@ -142,4 +142,7 @@ The parked Elixir crate remains in the tree while rules are converted gradually.
 | EX3010 | trailing-whitespace | converted-enabled | Uses synthetic line facts. |
 | EX3011 | semicolons | converted-enabled | Uses tree-sitter semicolon token facts. |
 | EX4001 | unsafe-to-atom | converted-enabled | Uses call function text matching. |
+| EX5001 | function-names | converted-enabled | Uses def call signature text matching. |
+| EX5002 | module-names | converted-enabled | Uses defmodule argument text matching. |
+| EX5003 | unsafe_exec | converted-enabled | Uses unsafe call function text plus argument heuristics. |
 | EX5006 | dbg | converted-enabled | Uses call function text matching. |

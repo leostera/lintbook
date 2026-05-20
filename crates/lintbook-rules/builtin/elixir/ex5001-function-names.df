@@ -1,0 +1,2 @@
+node(Node, "call", _, _, _, _), child(Node, Def, 0), text(Def, DefText), matchesRegex(DefText, "^def(p|macro|macrop)?$"), child(Node, Signature, 1), text(Signature, SignatureText), matchesRegex(SignatureText, "^[A-Za-z_][A-Za-z0-9_?!]*[A-Z]");
+node(Node, "call", _, _, _, _), child(Node, Def, 0), text(Def, DefText), matchesRegex(DefText, "^def(p|macro|macrop)?$"), child(Node, Signature, 1), text(Signature, SignatureText), matchesRegex(SignatureText, "^[A-Za-z_][A-Za-z0-9_?!]*__")

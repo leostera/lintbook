@@ -748,6 +748,27 @@ const BUILTIN_RULES: &[BuiltinRuleAsset] = &[
         query: include_str!("../builtin/elixir/ex4001-unsafe-to-atom.df"),
     },
     BuiltinRuleAsset {
+        name: "function-names",
+        markdown_path: "builtin/elixir/ex5001-function-names.md",
+        query_path: "builtin/elixir/ex5001-function-names.df",
+        markdown: include_str!("../builtin/elixir/ex5001-function-names.md"),
+        query: include_str!("../builtin/elixir/ex5001-function-names.df"),
+    },
+    BuiltinRuleAsset {
+        name: "module-names",
+        markdown_path: "builtin/elixir/ex5002-module-names.md",
+        query_path: "builtin/elixir/ex5002-module-names.df",
+        markdown: include_str!("../builtin/elixir/ex5002-module-names.md"),
+        query: include_str!("../builtin/elixir/ex5002-module-names.df"),
+    },
+    BuiltinRuleAsset {
+        name: "unsafe_exec",
+        markdown_path: "builtin/elixir/ex5003-unsafe-exec.md",
+        query_path: "builtin/elixir/ex5003-unsafe-exec.df",
+        markdown: include_str!("../builtin/elixir/ex5003-unsafe-exec.md"),
+        query: include_str!("../builtin/elixir/ex5003-unsafe-exec.df"),
+    },
+    BuiltinRuleAsset {
         name: "dbg",
         markdown_path: "builtin/elixir/ex5006-dbg.md",
         query_path: "builtin/elixir/ex5006-dbg.df",
@@ -3595,7 +3616,7 @@ Avoid dbg! in committed code.
     #[test]
     fn compiles_embedded_builtin_rules() {
         let rules = compile_builtin_rules().unwrap();
-        assert_eq!(rules.len(), 104);
+        assert_eq!(rules.len(), 107);
         assert!(rules.iter().any(|rule| {
             rule.id == "RS013"
                 && rule.name == "eq-op"
@@ -4497,6 +4518,41 @@ fn main() {
                 negatives: &[
                     "defmodule Safe do\n  def convert(input) do\n    String.to_existing_atom(input)\n  end\nend\n",
                     "defmodule Safe do\n  def value do\n    :known_atom\n  end\nend\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "EX5001",
+                positives: &[
+                    "defmodule Example do\n  def getUserData(id) do\n    id\n  end\nend\n",
+                    "defmodule Example do\n  defmacro badMacroName(value) do\n    value\n  end\nend\n",
+                ],
+                negatives: &[
+                    "defmodule Example do\n  def get_user_data(id) do\n    id\n  end\nend\n",
+                    "defmodule Example do\n  def valid_predicate?(value), do: value\nend\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "EX5002",
+                positives: &[
+                    "defmodule my_module do\n  def ok, do: :ok\nend\n",
+                    "defmodule MyApp.bad_controller do\n  def ok, do: :ok\nend\n",
+                ],
+                negatives: &[
+                    "defmodule MyModule do\n  def ok, do: :ok\nend\n",
+                    "defmodule MyApp.UserController do\n  def ok, do: :ok\nend\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "EX5003",
+                positives: &[
+                    "defmodule Example do\n  def test(user_command) do\n    System.shell(user_command)\n  end\nend\n",
+                    "defmodule Example do\n  def test(user_input) do\n    :os.cmd(user_input)\n  end\nend\n",
+                    "defmodule Example do\n  def test(user_file) do\n    System.cmd(\"cat\", [user_file])\n  end\nend\n",
+                    "defmodule Example do\n  def test(user_command) do\n    Port.open({:spawn, user_command}, [])\n  end\nend\n",
+                ],
+                negatives: &[
+                    "defmodule Example do\n  def test do\n    System.cmd(\"ls\", [\"-la\"])\n  end\nend\n",
+                    "defmodule Example do\n  def test do\n    Logger.info(\"ok\")\n  end\nend\n",
                 ],
             },
             BuiltinRuleFixture {

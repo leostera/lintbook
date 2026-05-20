@@ -1,0 +1,2 @@
+node(Node, "call", _, _, _, _), child(Node, Defmodule, 0), text(Defmodule, "defmodule"), child(Node, ModuleName, 1), text(ModuleName, ModuleText), matchesRegex(ModuleText, "(^|\.)[a-z]");
+node(Node, "call", _, _, _, _), child(Node, Defmodule, 0), text(Defmodule, "defmodule"), child(Node, ModuleName, 1), text(ModuleName, ModuleText), contains(ModuleText, "_")
