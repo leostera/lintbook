@@ -7,7 +7,7 @@ use datafox::{
 use lintbook_config::LintbookConfig;
 use lintbook_core::{LintResult, LintStatus, LintViolation};
 use lintbook_lang::Grammar;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fs;
@@ -727,7 +727,7 @@ impl FilePreparedQueryStorage {
     }
 
     fn path_for(&self, key: &PreparedQueryKey) -> datafox::Result<PathBuf> {
-        let encoded = bincode::serialize(key).map_err(prepared_query_storage_error)?;
+        let encoded = bincode_encode(key).map_err(prepared_query_storage_error)?;
         Ok(self
             .directory
             .join(format!("{}.bin", sha256_hex_bytes(&encoded))))
@@ -745,7 +745,7 @@ impl PreparedQueryStorage for FilePreparedQueryStorage {
             Ok(bytes) => bytes,
             Err(_) => return Ok(None),
         };
-        let prepared: PreparedQuery = match bincode::deserialize(&bytes) {
+        let prepared: PreparedQuery = match bincode_decode(&bytes) {
             Ok(prepared) => prepared,
             Err(_) => {
                 let _ = fs::remove_file(&path);
@@ -766,8 +766,7 @@ impl PreparedQueryStorage for FilePreparedQueryStorage {
         self.memory.insert(key.clone(), Arc::clone(&prepared))?;
 
         let path = self.path_for(&key)?;
-        let encoded =
-            bincode::serialize(prepared.as_ref()).map_err(prepared_query_storage_error)?;
+        let encoded = bincode_encode(prepared.as_ref()).map_err(prepared_query_storage_error)?;
         let _ = write_prepared_query_cache_file(&path, &encoded);
         Ok(())
     }
@@ -790,6 +789,23 @@ fn write_prepared_query_cache_file(path: &Path, bytes: &[u8]) -> std::io::Result
 fn prepared_query_storage_error(error: impl std::fmt::Display) -> datafox::Error {
     datafox::Error::PreparedQueryStorage {
         message: error.to_string(),
+    }
+}
+
+fn bincode_encode<T: Serialize>(
+    value: &T,
+) -> std::result::Result<Vec<u8>, bincode::error::EncodeError> {
+    bincode::serde::encode_to_vec(value, bincode::config::legacy())
+}
+
+fn bincode_decode<T: DeserializeOwned>(
+    bytes: &[u8],
+) -> std::result::Result<T, bincode::error::DecodeError> {
+    let (value, bytes_read) = bincode::serde::decode_from_slice(bytes, bincode::config::legacy())?;
+    if bytes_read == bytes.len() {
+        Ok(value)
+    } else {
+        Err(bincode::error::DecodeError::Other("trailing bytes"))
     }
 }
 
@@ -1710,7 +1726,7 @@ fn read_cached_facts(
     source_sha256: &str,
     predicate_fingerprint: &str,
 ) -> Option<CachedFactSet> {
-    let cached: CachedFactSet = bincode::deserialize(&fs::read(path).ok()?).ok()?;
+    let cached: CachedFactSet = bincode_decode(&fs::read(path).ok()?).ok()?;
     if cached.schema_version == FACT_SCHEMA_VERSION
         && cached.language == language
         && cached.source_sha256 == source_sha256
@@ -1726,7 +1742,7 @@ fn write_cached_facts(path: &Path, facts: &CachedFactSet) -> Result<()> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
-    let bytes = bincode::serialize(facts)?;
+    let bytes = bincode_encode(facts)?;
     fs::write(path, bytes)?;
     Ok(())
 }
@@ -2930,7 +2946,7 @@ Avoid dbg! in committed code.
         let path = fact_cache_path(temp.path(), "rust", &source_sha256, &predicate_fingerprint);
         assert!(path.exists());
 
-        let cached: CachedFactSet = bincode::deserialize(&fs::read(&path).unwrap()).unwrap();
+        let cached: CachedFactSet = bincode_decode(&fs::read(&path).unwrap()).unwrap();
         assert_eq!(cached.schema_version, FACT_SCHEMA_VERSION);
         assert_eq!(cached.language, "rust");
         assert_eq!(cached.source_sha256, source_sha256);
@@ -2949,7 +2965,7 @@ Avoid dbg! in committed code.
             storage: InMemoryStorage::new(),
             locations: BTreeMap::new(),
         };
-        fs::write(&path, bincode::serialize(&empty_cache).unwrap()).unwrap();
+        fs::write(&path, bincode_encode(&empty_cache).unwrap()).unwrap();
 
         let (_storage, locations) =
             load_or_build_facts(temp.path(), Grammar::Rust, source, &required_predicates).unwrap();
