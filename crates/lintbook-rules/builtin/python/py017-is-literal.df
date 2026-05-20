@@ -1,0 +1,1 @@
+node(Node, "comparison_operator", _, _, _, _), child(Node, Operator, _), text(Operator, OperatorText), matchesRegex(OperatorText, "^(is|is not)$"), child(Node, Literal, _), node(Literal, LiteralKind, _, _, _, _), matchesRegex(LiteralKind, "^(string|integer|float|true|false|list|dictionary|tuple|set)$")

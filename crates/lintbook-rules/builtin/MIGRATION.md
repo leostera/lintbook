@@ -110,3 +110,6 @@ The parked Python crate remains in the tree while rules are converted gradually.
 | PY012 | invalid-escape-sequence | converted-enabled | Uses string-content invalid backslash nodes while skipping raw/f-string prefixes. |
 | PY014 | f-string-missing-placeholders | converted-enabled | Uses f-string prefix and placeholder text matching. |
 | PY015 | multi-value-repeated-key-literal | converted-enabled | Uses dictionary pair key text equality within the same dictionary. |
+| PY016 | assert-tuple | converted-enabled | Uses assert statement tuple child facts. |
+| PY017 | is-literal | converted-enabled | Uses identity comparison operators with literal child kinds. |
+| PY019 | if-tuple | converted-enabled | Uses if/elif tuple child facts. |

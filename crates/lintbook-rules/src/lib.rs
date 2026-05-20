@@ -572,6 +572,27 @@ const BUILTIN_RULES: &[BuiltinRuleAsset] = &[
         markdown: include_str!("../builtin/python/py015-multi-value-repeated-key-literal.md"),
         query: include_str!("../builtin/python/py015-multi-value-repeated-key-literal.df"),
     },
+    BuiltinRuleAsset {
+        name: "assert-tuple",
+        markdown_path: "builtin/python/py016-assert-tuple.md",
+        query_path: "builtin/python/py016-assert-tuple.df",
+        markdown: include_str!("../builtin/python/py016-assert-tuple.md"),
+        query: include_str!("../builtin/python/py016-assert-tuple.df"),
+    },
+    BuiltinRuleAsset {
+        name: "is-literal",
+        markdown_path: "builtin/python/py017-is-literal.md",
+        query_path: "builtin/python/py017-is-literal.df",
+        markdown: include_str!("../builtin/python/py017-is-literal.md"),
+        query: include_str!("../builtin/python/py017-is-literal.df"),
+    },
+    BuiltinRuleAsset {
+        name: "if-tuple",
+        markdown_path: "builtin/python/py019-if-tuple.md",
+        query_path: "builtin/python/py019-if-tuple.df",
+        markdown: include_str!("../builtin/python/py019-if-tuple.md"),
+        query: include_str!("../builtin/python/py019-if-tuple.df"),
+    },
 ];
 
 pub const RULE_AUTHORING_GUIDE: &str = r#"lintbook custom rules are Rust-only in this version.
@@ -3093,7 +3114,7 @@ Avoid dbg! in committed code.
     #[test]
     fn compiles_embedded_builtin_rules() {
         let rules = compile_builtin_rules().unwrap();
-        assert_eq!(rules.len(), 78);
+        assert_eq!(rules.len(), 81);
         assert!(rules.iter().any(|rule| {
             rule.id == "RS013"
                 && rule.name == "eq-op"
@@ -3687,6 +3708,46 @@ fn main() {
                     "person = {\"name\": \"Alice\", \"age\": 30, \"city\": \"NYC\"}\n",
                     "data = {\"user\": {\"name\": \"Alice\"}, \"admin\": {\"name\": \"Bob\"}}\n",
                     "mixed = {\"1\": \"string one\", 1: \"number one\", True: \"boolean\"}\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "PY016",
+                positives: &[
+                    "assert (1, 2)\n",
+                    "assert (x > 0, y < 10)\n",
+                    "assert (condition,)\n",
+                ],
+                negatives: &[
+                    "assert (x > 0)\n",
+                    "assert ()\n",
+                    "assert x > 0, \"x must be positive\"\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "PY017",
+                positives: &[
+                    "if x is \"hello\":\n    pass\n",
+                    "if count is 0:\n    pass\n",
+                    "if result is True:\n    pass\n",
+                    "if items is []:\n    pass\n",
+                ],
+                negatives: &[
+                    "if x is None:\n    pass\n",
+                    "if x == \"hello\":\n    pass\n",
+                    "if x is y:\n    pass\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "PY019",
+                positives: &[
+                    "if (1, 2):\n    pass\n",
+                    "if x < 0:\n    pass\nelif (x > 0, x < 10):\n    pass\n",
+                    "if (condition,):\n    pass\n",
+                ],
+                negatives: &[
+                    "if (x > 0):\n    pass\n",
+                    "if ():\n    pass\n",
+                    "if x > 0:\n    pass\n",
                 ],
             },
         ];

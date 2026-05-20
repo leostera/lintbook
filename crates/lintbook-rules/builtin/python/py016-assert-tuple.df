@@ -1,0 +1,1 @@
+node(Node, "assert_statement", _, _, _, _), child(Node, Tuple, _), node(Tuple, "tuple", _, _, _, _), child(Tuple, Element, _), node(Element, ElementKind, _, _, _, _), notMatchesRegex(ElementKind, "^[(),]$")

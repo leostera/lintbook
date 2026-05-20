@@ -1,8 +1,5 @@
 pub mod py001_no_try_catch;
 pub mod py002_no_sys_path_modification;
-pub mod py016_assert_tuple;
-pub mod py017_is_literal;
-pub mod py019_if_tuple;
 pub mod py020_break_outside_loop;
 pub mod py021_continue_outside_loop;
 pub mod py022_yield_outside_function;
@@ -26,9 +23,6 @@ pub fn lints() -> Vec<Box<dyn Rule>> {
     vec![
         Box::new(py001_no_try_catch::NoTryCatch),
         Box::new(py002_no_sys_path_modification::NoSysPathModification),
-        Box::new(py016_assert_tuple::AssertTuple),
-        Box::new(py017_is_literal::IsLiteral),
-        Box::new(py019_if_tuple::IfTuple),
         Box::new(py020_break_outside_loop::BreakOutsideLoop),
         Box::new(py021_continue_outside_loop::ContinueOutsideLoop),
         Box::new(py022_yield_outside_function::YieldOutsideFunction),

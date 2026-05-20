@@ -1,0 +1,2 @@
+node(Node, "if_statement", _, _, _, _), child(Node, Tuple, _), node(Tuple, "tuple", _, _, _, _), child(Tuple, Element, _), node(Element, ElementKind, _, _, _, _), notMatchesRegex(ElementKind, "^[(),]$");
+node(Node, "elif_clause", _, _, _, _), child(Node, Tuple, _), node(Tuple, "tuple", _, _, _, _), child(Tuple, Element, _), node(Element, ElementKind, _, _, _, _), notMatchesRegex(ElementKind, "^[(),]$")
