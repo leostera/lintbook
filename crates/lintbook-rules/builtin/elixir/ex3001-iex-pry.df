@@ -1,0 +1,2 @@
+node(Node, "call", _, _, _, _), child(Node, Function, 0), text(Function, "IEx.pry");
+node(Node, "call", _, _, _, _), child(Node, Function, 0), text(Function, "pry")

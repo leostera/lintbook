@@ -130,3 +130,16 @@ The parked Python crate remains in the tree while rules are converted gradually.
 | PY032 | misplaced-bare-raise | converted-enabled | Uses reusable Python outside-except context facts. |
 | PY033 | unused-import | converted-enabled | Uses import binding and name-use facts. |
 | PY034 | late-future-import | converted-enabled | Uses module-level future import ordering facts. |
+
+## Elixir Rules
+
+The parked Elixir crate remains in the tree while rules are converted gradually.
+
+| Rule | Name | Status | Notes |
+| --- | --- | --- | --- |
+| EX3001 | iex-pry | converted-enabled | Uses call function text matching. |
+| EX3002 | io-inspect | converted-enabled | Uses call function text plus import detection. |
+| EX3010 | trailing-whitespace | converted-enabled | Uses synthetic line facts. |
+| EX3011 | semicolons | converted-enabled | Uses tree-sitter semicolon token facts. |
+| EX4001 | unsafe-to-atom | converted-enabled | Uses call function text matching. |
+| EX5006 | dbg | converted-enabled | Uses call function text matching. |

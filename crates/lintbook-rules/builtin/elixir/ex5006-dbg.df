@@ -1,0 +1,1 @@
+node(Node, "call", _, _, _, _), child(Node, Function, 0), text(Function, FunctionText), matchesRegex(FunctionText, "^(dbg|[A-Za-z_][A-Za-z0-9_\.]*\.dbg)$")

@@ -1,0 +1,3 @@
+node(Node, "call", _, _, _, _), child(Node, Function, 0), text(Function, "String.to_atom");
+node(Node, "call", _, _, _, _), child(Node, Function, 0), text(Function, "List.to_atom");
+node(Node, "call", _, _, _, _), child(Node, Function, 0), text(Function, "to_atom")

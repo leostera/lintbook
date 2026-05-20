@@ -712,6 +712,48 @@ const BUILTIN_RULES: &[BuiltinRuleAsset] = &[
         markdown: include_str!("../builtin/python/py034-late-future-import.md"),
         query: include_str!("../builtin/python/py034-late-future-import.df"),
     },
+    BuiltinRuleAsset {
+        name: "iex-pry",
+        markdown_path: "builtin/elixir/ex3001-iex-pry.md",
+        query_path: "builtin/elixir/ex3001-iex-pry.df",
+        markdown: include_str!("../builtin/elixir/ex3001-iex-pry.md"),
+        query: include_str!("../builtin/elixir/ex3001-iex-pry.df"),
+    },
+    BuiltinRuleAsset {
+        name: "io-inspect",
+        markdown_path: "builtin/elixir/ex3002-io-inspect.md",
+        query_path: "builtin/elixir/ex3002-io-inspect.df",
+        markdown: include_str!("../builtin/elixir/ex3002-io-inspect.md"),
+        query: include_str!("../builtin/elixir/ex3002-io-inspect.df"),
+    },
+    BuiltinRuleAsset {
+        name: "trailing-whitespace",
+        markdown_path: "builtin/elixir/ex3010-trailing-whitespace.md",
+        query_path: "builtin/elixir/ex3010-trailing-whitespace.df",
+        markdown: include_str!("../builtin/elixir/ex3010-trailing-whitespace.md"),
+        query: include_str!("../builtin/elixir/ex3010-trailing-whitespace.df"),
+    },
+    BuiltinRuleAsset {
+        name: "semicolons",
+        markdown_path: "builtin/elixir/ex3011-semicolons.md",
+        query_path: "builtin/elixir/ex3011-semicolons.df",
+        markdown: include_str!("../builtin/elixir/ex3011-semicolons.md"),
+        query: include_str!("../builtin/elixir/ex3011-semicolons.df"),
+    },
+    BuiltinRuleAsset {
+        name: "unsafe-to-atom",
+        markdown_path: "builtin/elixir/ex4001-unsafe-to-atom.md",
+        query_path: "builtin/elixir/ex4001-unsafe-to-atom.df",
+        markdown: include_str!("../builtin/elixir/ex4001-unsafe-to-atom.md"),
+        query: include_str!("../builtin/elixir/ex4001-unsafe-to-atom.df"),
+    },
+    BuiltinRuleAsset {
+        name: "dbg",
+        markdown_path: "builtin/elixir/ex5006-dbg.md",
+        query_path: "builtin/elixir/ex5006-dbg.df",
+        markdown: include_str!("../builtin/elixir/ex5006-dbg.md"),
+        query: include_str!("../builtin/elixir/ex5006-dbg.df"),
+    },
 ];
 
 pub const RULE_AUTHORING_GUIDE: &str = r#"lintbook custom rules are Rust-only in this version.
@@ -3553,7 +3595,7 @@ Avoid dbg! in committed code.
     #[test]
     fn compiles_embedded_builtin_rules() {
         let rules = compile_builtin_rules().unwrap();
-        assert_eq!(rules.len(), 98);
+        assert_eq!(rules.len(), 104);
         assert!(rules.iter().any(|rule| {
             rule.id == "RS013"
                 && rule.name == "eq-op"
@@ -4396,6 +4438,83 @@ fn main() {
         for case in cases {
             assert_builtin_rule_for_grammar(
                 Grammar::Python,
+                case.rule_id,
+                case.positives,
+                case.negatives,
+            )
+            .await;
+        }
+    }
+
+    #[tokio::test]
+    async fn embedded_elixir_rules_match_positive_and_negative_samples() {
+        let cases = [
+            BuiltinRuleFixture {
+                rule_id: "EX3001",
+                positives: &[
+                    "defmodule Example do\n  def debug do\n    IEx.pry()\n  end\nend\n",
+                    "defmodule Example do\n  def debug do\n    pry()\n  end\nend\n",
+                ],
+                negatives: &[
+                    "defmodule Example do\n  def ok do\n    :ok\n  end\nend\n",
+                    "defmodule Example do\n  def pry_helper do\n    :ok\n  end\nend\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "EX3002",
+                positives: &[
+                    "defmodule Debug do\n  def run(value) do\n    IO.inspect(value, label: \"value\")\n  end\nend\n",
+                    "defmodule Debug do\n  import IO\n  def run(value) do\n    inspect(value)\n  end\nend\n",
+                ],
+                negatives: &[
+                    "defmodule Clean do\n  require Logger\n  def run(value) do\n    Logger.info(\"value: #{inspect(value)}\")\n  end\nend\n",
+                    "defmodule Clean do\n  def run(value) do\n    Kernel.inspect(value)\n  end\nend\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "EX3010",
+                positives: &["defmodule Example do  \n  def hello, do: :world\t\nend\n"],
+                negatives: &["defmodule Example do\n  def hello, do: :world\nend\n"],
+            },
+            BuiltinRuleFixture {
+                rule_id: "EX3011",
+                positives: &[
+                    "defmodule Example do\n  def bad do\n    x = 1; y = 2\n    x + y\n  end\nend\n",
+                    "defmodule Example do\n  def one_liner, do: x = 1; x + 1\nend\n",
+                ],
+                negatives: &[
+                    "defmodule Example do\n  def good do\n    x = 1\n    y = 2\n    x + y\n  end\nend\n",
+                    "defmodule Example do\n  def text do\n    value = \";\"\n    # ; in a comment\n    value\n  end\nend\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "EX4001",
+                positives: &[
+                    "defmodule Unsafe do\n  def convert(input) do\n    String.to_atom(input)\n  end\nend\n",
+                    "defmodule Unsafe do\n  def convert(chars) do\n    List.to_atom(chars)\n  end\nend\n",
+                    "defmodule Unsafe do\n  def convert(input) do\n    to_atom(input)\n  end\nend\n",
+                ],
+                negatives: &[
+                    "defmodule Safe do\n  def convert(input) do\n    String.to_existing_atom(input)\n  end\nend\n",
+                    "defmodule Safe do\n  def value do\n    :known_atom\n  end\nend\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "EX5006",
+                positives: &[
+                    "defmodule Example do\n  def debug(value) do\n    dbg(value)\n  end\nend\n",
+                    "defmodule Example do\n  def debug(value) do\n    Kernel.dbg(value)\n  end\nend\n",
+                ],
+                negatives: &[
+                    "defmodule Example do\n  def debug_info(value) do\n    dbg_helper(value)\n  end\nend\n",
+                    "defmodule Example do\n  def dbg_helper(value), do: value\nend\n",
+                ],
+            },
+        ];
+
+        for case in cases {
+            assert_builtin_rule_for_grammar(
+                Grammar::Elixir,
                 case.rule_id,
                 case.positives,
                 case.negatives,
