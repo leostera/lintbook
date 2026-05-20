@@ -425,6 +425,7 @@ async fn check_project(output: OutputFormat, files: Vec<String>) -> anyhow::Resu
     let active_rule_languages = lintbook_rules::active_rule_languages(&repo_root, &config)?
         .into_iter()
         .collect::<HashSet<_>>();
+    let evaluation_profile = generated_rule_evaluation_profile(&current_dir, &files);
 
     if !matches!(output, OutputFormat::Json) {
         return stream_check_results(
@@ -434,6 +435,7 @@ async fn check_project(output: OutputFormat, files: Vec<String>) -> anyhow::Resu
             &config,
             &files,
             &active_rule_languages,
+            evaluation_profile,
             scan_start,
         );
     }
@@ -445,8 +447,13 @@ async fn check_project(output: OutputFormat, files: Vec<String>) -> anyhow::Resu
         &files,
         &active_rule_languages,
     )?;
-    let generated_violations =
-        lintbook_rules::run_generated_rules(&repo_root, &config, &results).await?;
+    let generated_violations = lintbook_rules::run_generated_rules_with_profile(
+        &repo_root,
+        &config,
+        &results,
+        evaluation_profile,
+    )
+    .await?;
     for result in &mut results {
         if let Some(mut violations) = generated_violations.get(&result.file_path).cloned() {
             result.violations.append(&mut violations);
@@ -456,6 +463,35 @@ async fn check_project(output: OutputFormat, files: Vec<String>) -> anyhow::Resu
 
     let llm_violations = run_llm_lints(&config, &repo_root, &results).await?;
     print_check_results(output, &repo_root, results, llm_violations, scan_start)
+}
+
+fn generated_rule_evaluation_profile(
+    current_dir: &Path,
+    files: &[String],
+) -> lintbook_rules::GeneratedRuleEvaluationProfile {
+    if files.len() == 1 && is_explicit_file_target(current_dir, &files[0]) {
+        return lintbook_rules::GeneratedRuleEvaluationProfile::parallel();
+    }
+
+    lintbook_rules::GeneratedRuleEvaluationProfile::serial()
+}
+
+fn is_explicit_file_target(current_dir: &Path, target: &str) -> bool {
+    if target
+        .bytes()
+        .any(|byte| matches!(byte, b'*' | b'?' | b'['))
+    {
+        return false;
+    }
+
+    let path = Path::new(target);
+    let path = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        current_dir.join(path)
+    };
+
+    path.is_file()
 }
 
 fn read_config(repo_root: &Path, output: &OutputFormat) -> anyhow::Result<LintbookConfig> {
@@ -547,9 +583,14 @@ fn stream_check_results(
     config: &LintbookConfig,
     files: &[String],
     active_rule_languages: &HashSet<String>,
+    evaluation_profile: lintbook_rules::GeneratedRuleEvaluationProfile,
     scan_start: std::time::Instant,
 ) -> anyhow::Result<()> {
-    let runner = Arc::new(lintbook_rules::GeneratedRuleRunner::new(repo_root, config)?);
+    let runner = Arc::new(lintbook_rules::GeneratedRuleRunner::new_with_profile(
+        repo_root,
+        config,
+        evaluation_profile,
+    )?);
     let counters = Arc::new(Mutex::new(CheckCounters::default()));
     let repo_root_for_handler = repo_root.to_path_buf();
     let output_for_handler = output.clone();
@@ -1073,6 +1114,49 @@ mod tests {
         };
         assert_eq!(agent.as_deref(), Some("codex"));
         assert_eq!(agent_args, vec!["--ask-for-approval", "on-request"]);
+    }
+
+    #[test]
+    fn generated_rule_evaluation_profile_parallelizes_single_file_targets() {
+        let temp = tempdir().unwrap();
+        let source = temp.path().join("main.rs");
+        fs::write(&source, "fn main() {}\n").unwrap();
+
+        assert_eq!(
+            generated_rule_evaluation_profile(temp.path(), &["main.rs".to_string()]),
+            lintbook_rules::GeneratedRuleEvaluationProfile::parallel()
+        );
+        assert_eq!(
+            generated_rule_evaluation_profile(temp.path(), &[source.to_string_lossy().to_string()]),
+            lintbook_rules::GeneratedRuleEvaluationProfile::parallel()
+        );
+    }
+
+    #[test]
+    fn generated_rule_evaluation_profile_keeps_many_file_scans_serial() {
+        let temp = tempdir().unwrap();
+        let source = temp.path().join("main.rs");
+        fs::write(&source, "fn main() {}\n").unwrap();
+
+        assert_eq!(
+            generated_rule_evaluation_profile(temp.path(), &[]),
+            lintbook_rules::GeneratedRuleEvaluationProfile::serial()
+        );
+        assert_eq!(
+            generated_rule_evaluation_profile(temp.path(), &[".".to_string()]),
+            lintbook_rules::GeneratedRuleEvaluationProfile::serial()
+        );
+        assert_eq!(
+            generated_rule_evaluation_profile(temp.path(), &["*.rs".to_string()]),
+            lintbook_rules::GeneratedRuleEvaluationProfile::serial()
+        );
+        assert_eq!(
+            generated_rule_evaluation_profile(
+                temp.path(),
+                &["main.rs".to_string(), "lib.rs".to_string()]
+            ),
+            lintbook_rules::GeneratedRuleEvaluationProfile::serial()
+        );
     }
 
     #[test]

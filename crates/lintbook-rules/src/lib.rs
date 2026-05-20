@@ -883,7 +883,26 @@ pub async fn run_generated_rules(
     config: &LintbookConfig,
     results: &[LintResult<Grammar>],
 ) -> Result<BTreeMap<PathBuf, Vec<LintViolation>>> {
-    let runner = Arc::new(GeneratedRuleRunner::new(repo_root, config)?);
+    run_generated_rules_with_profile(
+        repo_root,
+        config,
+        results,
+        GeneratedRuleEvaluationProfile::serial(),
+    )
+    .await
+}
+
+pub async fn run_generated_rules_with_profile(
+    repo_root: &Path,
+    config: &LintbookConfig,
+    results: &[LintResult<Grammar>],
+    evaluation_profile: GeneratedRuleEvaluationProfile,
+) -> Result<BTreeMap<PathBuf, Vec<LintViolation>>> {
+    let runner = Arc::new(GeneratedRuleRunner::new_with_profile(
+        repo_root,
+        config,
+        evaluation_profile,
+    )?);
     if runner.is_empty() {
         return Ok(BTreeMap::new());
     }
@@ -925,10 +944,62 @@ pub async fn run_generated_rules(
 pub struct GeneratedRuleRunner {
     repo_root: PathBuf,
     rules_by_language: HashMap<String, Arc<Vec<CompiledRule>>>,
+    evaluation_profile: GeneratedRuleEvaluationProfile,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GeneratedRuleEvaluationProfile {
+    Serial,
+    Parallel { seed_threshold: Option<usize> },
+}
+
+impl GeneratedRuleEvaluationProfile {
+    pub fn serial() -> Self {
+        Self::Serial
+    }
+
+    pub fn parallel() -> Self {
+        Self::Parallel {
+            seed_threshold: None,
+        }
+    }
+
+    pub fn parallel_with_seed_threshold(seed_threshold: usize) -> Self {
+        Self::Parallel {
+            seed_threshold: Some(seed_threshold),
+        }
+    }
+
+    fn evaluator_for<'store>(&self, storage: &'store InMemoryStorage) -> Result<Evaluator<'store>> {
+        let builder = Evaluator::builder().with_store(storage);
+        let builder = match *self {
+            Self::Serial => builder.serial(),
+            Self::Parallel { seed_threshold } => {
+                let builder = builder.parallel();
+                if let Some(seed_threshold) = seed_threshold {
+                    builder.seed_threshold(seed_threshold)
+                } else {
+                    builder
+                }
+            }
+        };
+
+        builder
+            .build()
+            .context("Failed to build generated rule evaluator")
+    }
 }
 
 impl GeneratedRuleRunner {
     pub fn new(repo_root: &Path, config: &LintbookConfig) -> Result<Self> {
+        Self::new_with_profile(repo_root, config, GeneratedRuleEvaluationProfile::serial())
+    }
+
+    pub fn new_with_profile(
+        repo_root: &Path,
+        config: &LintbookConfig,
+        evaluation_profile: GeneratedRuleEvaluationProfile,
+    ) -> Result<Self> {
         let rules = load_all_rules(repo_root, config)?;
         let mut rules_by_language: HashMap<String, Vec<CompiledRule>> = HashMap::new();
         for rule in rules {
@@ -944,6 +1015,7 @@ impl GeneratedRuleRunner {
                 .into_iter()
                 .map(|(language, rules)| (language, Arc::new(rules)))
                 .collect(),
+            evaluation_profile,
         })
     }
 
@@ -968,7 +1040,13 @@ impl GeneratedRuleRunner {
             Err(_) => return Ok(Vec::new()),
         };
 
-        run_rules_on_file_sync(&self.repo_root, grammar, &source, rules)
+        run_rules_on_file_sync_with_profile(
+            &self.repo_root,
+            grammar,
+            &source,
+            rules,
+            self.evaluation_profile,
+        )
     }
 }
 
@@ -1240,29 +1318,44 @@ fn validate_query(metadata: &RuleFrontmatter, query: &Query) -> Result<()> {
     Ok(())
 }
 
+#[cfg(test)]
 fn run_rules_on_file_sync(
     repo_root: &Path,
     grammar: Grammar,
     source: &str,
     rules: &[CompiledRule],
 ) -> Result<Vec<LintViolation>> {
+    run_rules_on_file_sync_with_profile(
+        repo_root,
+        grammar,
+        source,
+        rules,
+        GeneratedRuleEvaluationProfile::serial(),
+    )
+}
+
+fn run_rules_on_file_sync_with_profile(
+    repo_root: &Path,
+    grammar: Grammar,
+    source: &str,
+    rules: &[CompiledRule],
+    evaluation_profile: GeneratedRuleEvaluationProfile,
+) -> Result<Vec<LintViolation>> {
     let required_predicates = required_fact_predicates(rules);
     let (storage, locations) =
         load_or_build_facts(repo_root, grammar, source, &required_predicates)?;
-    evaluate_rules(storage, locations, rules)
+    evaluate_rules(storage, locations, rules, evaluation_profile)
 }
 
 fn evaluate_rules(
     storage: InMemoryStorage,
     locations: HashMap<i64, NodeLocation>,
     rules: &[CompiledRule],
+    evaluation_profile: GeneratedRuleEvaluationProfile,
 ) -> Result<Vec<LintViolation>> {
     let mut violations = Vec::new();
     let mut seen = BTreeSet::new();
-    let evaluator = Evaluator::builder()
-        .with_store(&storage)
-        .build()
-        .context("Failed to build generated rule evaluator")?;
+    let evaluator = evaluation_profile.evaluator_for(&storage)?;
 
     for rule in rules {
         for query in &rule.queries {
