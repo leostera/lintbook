@@ -128,3 +128,5 @@ The parked Python crate remains in the tree while rules are converted gradually.
 | PY030 | invalid-all-object | converted-enabled | Uses `__all__` assignment value and element kind facts. |
 | PY031 | invalid-all-format | converted-enabled | Uses `__all__` assignment parents and mutation call shapes. |
 | PY032 | misplaced-bare-raise | converted-enabled | Uses reusable Python outside-except context facts. |
+| PY033 | unused-import | converted-enabled | Uses import binding and name-use facts. |
+| PY034 | late-future-import | converted-enabled | Uses module-level future import ordering facts. |

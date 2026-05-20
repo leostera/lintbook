@@ -16,7 +16,7 @@ use std::sync::Arc;
 use tree_sitter::{Node, Parser};
 
 const SCHEMA_VERSION: u32 = 2;
-const FACT_SCHEMA_VERSION: u32 = 10;
+const FACT_SCHEMA_VERSION: u32 = 11;
 const BINCODE_CACHE_FORMAT_VERSION: u32 = 2;
 const LINTBOOK_DIR: &str = ".lintbook";
 const RULES_DIR: &str = "rules";
@@ -698,6 +698,20 @@ const BUILTIN_RULES: &[BuiltinRuleAsset] = &[
         markdown: include_str!("../builtin/python/py032-misplaced-bare-raise.md"),
         query: include_str!("../builtin/python/py032-misplaced-bare-raise.df"),
     },
+    BuiltinRuleAsset {
+        name: "unused-import",
+        markdown_path: "builtin/python/py033-unused-import.md",
+        query_path: "builtin/python/py033-unused-import.df",
+        markdown: include_str!("../builtin/python/py033-unused-import.md"),
+        query: include_str!("../builtin/python/py033-unused-import.df"),
+    },
+    BuiltinRuleAsset {
+        name: "late-future-import",
+        markdown_path: "builtin/python/py034-late-future-import.md",
+        query_path: "builtin/python/py034-late-future-import.df",
+        markdown: include_str!("../builtin/python/py034-late-future-import.md"),
+        query: include_str!("../builtin/python/py034-late-future-import.df"),
+    },
 ];
 
 pub const RULE_AUTHORING_GUIDE: &str = r#"lintbook custom rules are Rust-only in this version.
@@ -766,6 +780,14 @@ Available Rust facts:
 - line(Line, LineNumber, Text, StartByte, EndByte)
 - nextLine(Line, NextLine)
 - previousLine(NextLine, Line)
+- pythonOutsideLoop(Node)
+- pythonOutsideFunction(Node)
+- pythonInsideFinally(Node)
+- pythonOutsideExcept(Node)
+- pythonScopeDeclaration(Scope, Kind, Name, StatementNode)
+- pythonNameUse(Name)
+- pythonImportBinding(StatementNode, ImportedName, CheckName)
+- pythonLateFutureImport(Node)
 
 Fact semantics:
 - `Node`, `Parent`, `Child`, `Ancestor`, and `Descendant` are integer tree-sitter node ids.
@@ -791,6 +813,7 @@ Fact semantics:
 - `nextCodeSibling` is direct adjacent sibling order after skipping comments and anonymous punctuation.
 - `lineGap(Left, Right, BlankLineCount)` counts blank physical lines between adjacent sibling nodes.
 - `nextLine` and `previousLine` are direct adjacent source-line relationships.
+- Python helper facts expose reusable context, import binding, and `__future__` import ordering checks for Python rules.
 
 Example rules:
 - dbg macro calls:
@@ -1895,6 +1918,8 @@ fn all_fact_predicates() -> BTreeSet<String> {
         "pythonOutsideExcept",
         "pythonScopeDeclaration",
         "pythonNameUse",
+        "pythonImportBinding",
+        "pythonLateFutureImport",
     ]
     .into_iter()
     .map(str::to_string)
@@ -2136,6 +2161,8 @@ impl<'a> FactBuilder<'a> {
             "pythonOutsideExcept",
             "pythonScopeDeclaration",
             "pythonNameUse",
+            "pythonImportBinding",
+            "pythonLateFutureImport",
         ]) {
             self.insert_python_context_facts(id, node, ancestors);
         }
@@ -2345,6 +2372,19 @@ impl<'a> FactBuilder<'a> {
         {
             self.insert_python_scope_declarations(id, node, ancestors);
         }
+        if self.wants("pythonImportBinding")
+            && matches!(node.kind(), "import_statement" | "import_from_statement")
+        {
+            self.insert_python_import_bindings(id, node);
+        }
+        if self.wants("pythonLateFutureImport") && node.kind() == "future_import_statement" {
+            let parent_kind = ancestors
+                .last()
+                .and_then(|parent| self.node_kinds.get(parent).map(String::as_str));
+            if parent_kind != Some("module") {
+                self.insert("pythonLateFutureImport", vec![Value::integer(id)]);
+            }
+        }
         if self.wants("pythonNameUse")
             && node.kind() == "identifier"
             && !self.has_python_import_context(ancestors)
@@ -2352,6 +2392,83 @@ impl<'a> FactBuilder<'a> {
             if let Ok(name) = node.utf8_text(self.source.as_bytes()) {
                 self.insert("pythonNameUse", vec![Value::string(name)]);
             }
+        }
+    }
+
+    fn insert_python_import_bindings(&mut self, statement_id: i64, node: Node<'a>) {
+        let is_plain_import = node.kind() == "import_statement";
+        let mut seen_import_keyword = false;
+
+        for index in 0..node.child_count() {
+            let Some(child) = node.child(index as u32) else {
+                continue;
+            };
+            if child.kind() == "import" {
+                seen_import_keyword = true;
+                continue;
+            }
+            if !seen_import_keyword {
+                continue;
+            }
+            self.insert_python_import_binding_node(statement_id, child, is_plain_import);
+        }
+    }
+
+    fn insert_python_import_binding_node(
+        &mut self,
+        statement_id: i64,
+        node: Node<'a>,
+        is_plain_import: bool,
+    ) {
+        match node.kind() {
+            "aliased_import" | "dotted_as_name" => {
+                let mut names = Vec::new();
+                for index in 0..node.child_count() {
+                    let Some(child) = node.child(index as u32) else {
+                        continue;
+                    };
+                    if matches!(child.kind(), "dotted_name" | "identifier") {
+                        if let Ok(name) = child.utf8_text(self.source.as_bytes()) {
+                            names.push(name.to_string());
+                        }
+                    }
+                }
+                if let Some(imported) = names.first() {
+                    let check_name = names
+                        .get(1)
+                        .cloned()
+                        .unwrap_or_else(|| python_import_check_name(imported, is_plain_import));
+                    self.insert(
+                        "pythonImportBinding",
+                        vec![
+                            Value::integer(statement_id),
+                            Value::string(imported),
+                            Value::string(check_name),
+                        ],
+                    );
+                }
+            }
+            "dotted_name" | "identifier" => {
+                if let Ok(imported) = node.utf8_text(self.source.as_bytes()) {
+                    self.insert(
+                        "pythonImportBinding",
+                        vec![
+                            Value::integer(statement_id),
+                            Value::string(imported),
+                            Value::string(python_import_check_name(imported, is_plain_import)),
+                        ],
+                    );
+                }
+            }
+            "dotted_as_names" | "import_list" => {
+                for index in 0..node.child_count() {
+                    let Some(child) = node.child(index as u32) else {
+                        continue;
+                    };
+                    self.insert_python_import_binding_node(statement_id, child, is_plain_import);
+                }
+            }
+            _ => {}
         }
     }
 
@@ -2566,6 +2683,32 @@ impl<'a> FactBuilder<'a> {
 
         if self.wants("possibleMissingComma") && kind == "array_expression" {
             self.insert_possible_missing_comma_facts(child_infos);
+        }
+
+        if self.wants("pythonLateFutureImport") && kind == "module" {
+            self.insert_python_late_future_import_facts(child_infos);
+        }
+    }
+
+    fn insert_python_late_future_import_facts(&mut self, child_infos: &[ChildFactInfo]) {
+        let mut seen_non_future_statement = false;
+
+        for (index, child) in child_infos.iter().enumerate() {
+            if child.kind == "comment" {
+                continue;
+            }
+            if looks_like_python_module_docstring(index, child) {
+                continue;
+            }
+            if child.kind == "future_import_statement" {
+                if seen_non_future_statement {
+                    self.insert("pythonLateFutureImport", vec![Value::integer(child.id)]);
+                }
+                continue;
+            }
+            if child.is_named {
+                seen_non_future_statement = true;
+            }
         }
     }
 
@@ -2799,7 +2942,7 @@ fn child_text(child_infos: &[ChildFactInfo], id: i64) -> Option<&str> {
 }
 
 fn is_comment_kind(kind: &str) -> bool {
-    matches!(kind, "line_comment" | "block_comment")
+    matches!(kind, "line_comment" | "block_comment" | "comment")
 }
 
 fn is_python_scope_boundary(kind: &str) -> bool {
@@ -2807,6 +2950,27 @@ fn is_python_scope_boundary(kind: &str) -> bool {
         kind,
         "function_definition" | "async_function_definition" | "class_definition" | "lambda"
     )
+}
+
+fn python_import_check_name(imported: &str, is_plain_import: bool) -> String {
+    if is_plain_import {
+        imported.split('.').next().unwrap_or(imported).to_string()
+    } else {
+        imported.to_string()
+    }
+}
+
+fn looks_like_python_module_docstring(index: usize, child: &ChildFactInfo) -> bool {
+    if index > 2 || child.kind != "expression_statement" {
+        return false;
+    }
+
+    let text = child.text.trim_start().to_ascii_lowercase();
+    [
+        "\"", "'", "r\"", "r'", "u\"", "u'", "ur\"", "ur'", "ru\"", "ru'",
+    ]
+    .iter()
+    .any(|prefix| text.starts_with(prefix))
 }
 
 fn is_comparison_operator(operator: &str) -> bool {
@@ -3389,7 +3553,7 @@ Avoid dbg! in committed code.
     #[test]
     fn compiles_embedded_builtin_rules() {
         let rules = compile_builtin_rules().unwrap();
-        assert_eq!(rules.len(), 96);
+        assert_eq!(rules.len(), 98);
         assert!(rules.iter().any(|rule| {
             rule.id == "RS013"
                 && rule.name == "eq-op"
@@ -4196,6 +4360,35 @@ fn main() {
                 negatives: &[
                     "try:\n    risky_operation()\nexcept ValueError:\n    raise\n",
                     "def function():\n    raise ValueError('not bare')\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "PY033",
+                positives: &[
+                    "import os\nimport sys\nprint('Hello')\n",
+                    "import json\nimport os\ndata = json.loads('{}')\n",
+                    "from os import path\nfrom sys import argv\ncurrent_dir = path.dirname(__file__)\n",
+                    "from json import loads as json_loads\nprint('Hello')\n",
+                ],
+                negatives: &[
+                    "import os\ncurrent_path = os.getcwd()\n",
+                    "import os as operating_system\npath = operating_system.getcwd()\n",
+                    "from json import loads as json_loads\ndata = json_loads('{}')\n",
+                    "def hello():\n    print('Hello world')\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "PY034",
+                positives: &[
+                    "import os\nfrom __future__ import annotations\n",
+                    "def my_function():\n    pass\n\nfrom __future__ import annotations\n",
+                    "def bad_function():\n    from __future__ import annotations\n",
+                    "if True:\n    from __future__ import annotations\n",
+                ],
+                negatives: &[
+                    "from __future__ import annotations\nfrom __future__ import unicode_literals\n\nimport os\n",
+                    "\"\"\"Module docstring.\"\"\"\n\nfrom __future__ import annotations\nimport os\n",
+                    "import os\nimport sys\n",
                 ],
             },
         ];
