@@ -363,7 +363,6 @@ fn build_codex_compile_prompt(
         r#"You are generating lintbook Datafox query files.
 
 Assume you are running inside a user's project with the `lintbook` binary installed on PATH.
-Do not use `cargo run`, `cargo test`, or paths from the lintbook source repository.
 
 For each incomplete rule below:
 - Read the Markdown rule intent.
@@ -1199,11 +1198,9 @@ We don't want dbg! macro calls in production code.
         assert!(prompt.contains("Example rules"));
         assert!(prompt.contains("Testing workflow"));
         assert!(prompt.contains("`lintbook` binary installed on PATH"));
-        assert!(prompt.contains("Do not use `cargo run`, `cargo test`"));
         assert!(prompt.contains("lintbook dump-ast --lang rust"));
         assert!(prompt.contains("lintbook compile"));
         assert!(prompt.contains("lintbook check --output json <positive.rs>"));
-        assert!(!prompt.contains("cargo run --quiet -p lintbook-cli"));
         assert!(prompt.contains("Stop as soon as the new lint rule compiles successfully"));
         assert!(prompt.contains("Do not fix, refactor, or silence every existing file"));
         assert!(prompt.contains(".lintbook/gen/no-dbg.df"));
