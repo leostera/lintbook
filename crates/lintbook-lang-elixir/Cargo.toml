@@ -1,0 +1,10 @@
+[package]
+name = "lintbook-lang-elixir"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lintbook-core = { path = "../lintbook-core" }
+tree-sitter = { workspace = true }
+tree-sitter-elixir = { workspace = true }
+serde = { workspace = true }

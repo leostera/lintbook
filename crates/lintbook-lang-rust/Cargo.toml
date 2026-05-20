@@ -1,0 +1,13 @@
+[package]
+name = "lintbook-lang-rust"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lintbook-core = { path = "../lintbook-core" }
+tree-sitter = { workspace = true }
+tree-sitter-rust = { workspace = true }
+serde = { version = "1.0", features = ["derive"] }
+
+[dev-dependencies]
+tempfile = "3.0"

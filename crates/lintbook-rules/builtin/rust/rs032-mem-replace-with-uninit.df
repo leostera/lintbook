@@ -1,0 +1,1 @@
+node(Node, "call_expression", _, _, _, _), text(Node, Text), matchesRegex(Text, "(^|::|[^A-Za-z0-9_])replace\s*\("), matchesRegex(Text, "(mem::uninitialized\s*\(\)|std::mem::uninitialized\s*\(\)|core::mem::uninitialized\s*\(\)|uninitialized\s*\(\)|MaybeUninit.*uninit\s*\(\).*assume_init\s*\(\))")

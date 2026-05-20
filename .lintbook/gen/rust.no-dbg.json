@@ -1,0 +1,63 @@
+{
+  "schema_version": 2,
+  "id": "rust.no-dbg",
+  "name": "rust.no-dbg",
+  "language": "rust",
+  "message_template": "We don't want dbg! macro calls in production code.",
+  "primary": "Node",
+  "markdown_sha256": "108658d5a73c0ee4c581f2176c910b7ca11811f8a615d6cb01871c5f66a40c86",
+  "query_sha256": "ca44839d107783c38b72fcf7454e64275c25621253da15db13d89ffc466d88f3",
+  "queries": [
+    {
+      "Multi": [
+        {
+          "Atom": {
+            "predicate": "node",
+            "args": [
+              {
+                "Var": "Node"
+              },
+              {
+                "Const": {
+                  "String": "macro_invocation"
+                }
+              },
+              "Wildcard",
+              "Wildcard",
+              "Wildcard",
+              "Wildcard"
+            ]
+          }
+        },
+        {
+          "Atom": {
+            "predicate": "text",
+            "args": [
+              {
+                "Var": "Node"
+              },
+              {
+                "Var": "Text"
+              }
+            ]
+          }
+        },
+        {
+          "Builtin": {
+            "name": "contains",
+            "args": [
+              {
+                "Var": "Text"
+              },
+              {
+                "Const": {
+                  "String": "dbg!"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+[package]
+name = "lintbook-lang"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+tree-sitter = { workspace = true }
+anyhow = { workspace = true }
+tree-sitter-elixir = { workspace = true }
+tree-sitter-python = { workspace = true }
+tree-sitter-rust = { workspace = true }
+tree-sitter-sequel = { workspace = true }
+lintbook-config = { path = "../lintbook-config" }
+lintbook-core = { path = "../lintbook-core" }

@@ -1,0 +1,3 @@
+node(Node, "macro_invocation", _, _, _, _), text(Node, Text), startsWith(Text, "vec!"), contains(Text, ".clone()"), contains(Text, ";"), contains(Text, "Rc::");
+node(Node, "macro_invocation", _, _, _, _), text(Node, Text), startsWith(Text, "vec!"), contains(Text, ".clone()"), contains(Text, ";"), contains(Text, "Arc::");
+node(Node, "macro_invocation", _, _, _, _), text(Node, Text), startsWith(Text, "vec!"), contains(Text, ".clone()"), contains(Text, ";"), matchesRegex(Text, "(rc|arc|shared|ref_counted)\.clone\s*\(")

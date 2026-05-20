@@ -1,0 +1,1 @@
+node(Node, "for_expression", _, _, _, _), field(Node, "value", Iterable), node(Iterable, "call_expression", _, _, _, _), text(Iterable, Text), matchesRegex(Text, "\.next\s*\(\s*\)$")

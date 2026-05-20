@@ -1,0 +1,25 @@
+---
+source: crates/lintbook-tests/tests/integration_test.rs
+expression: output
+---
+{
+  "files": [
+    {
+      "duration": 0.0,
+      "file_path": "clean.rs",
+      "language": "Rust",
+      "status": "Ok",
+      "violations": []
+    }
+  ],
+  "llm_violations": [],
+  "statistics": {
+    "files_scanned": 1,
+    "files_skipped": 0,
+    "files_with_violations": 0,
+    "llm_violations_count": 0,
+    "total_duration_ms": 0.0,
+    "total_files": 1,
+    "total_violations": 0
+  }
+}

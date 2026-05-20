@@ -1,0 +1,2 @@
+node(Node, "call_expression", _, _, _, _), text(Node, Text), contains(Text, "size_of::<&"), notContains(Text, "size_of_val");
+node(Node, "call_expression", _, _, _, _), text(Node, Text), contains(Text, "size_of(&"), notContains(Text, "size_of_val")

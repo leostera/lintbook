@@ -1,0 +1,2 @@
+node(Node, "call_expression", _, _, _, _), field(Node, "function", Function), node(Function, "field_expression", _, _, _, _), field(Function, "field", Field), text(Field, Method), matchesRegex(Method, "^(hash|hasher|finish|write|hash_one|hash_slice)$"), field(Function, "value", Object), unitLike(Object);
+node(Node, "call_expression", _, _, _, _), field(Node, "function", Function), text(Function, FunctionText), contains(FunctionText, "hash"), field(Node, "arguments", Arguments), argument(Arguments, Argument, _), unitLike(Argument)

@@ -1,0 +1,2 @@
+node(Node, "line_comment", _, _, _, _), trimmedText(Node, "///");
+node(Node, "line_comment", _, _, _, _), trimmedText(Node, "//!") 

@@ -1,0 +1,10 @@
+[package]
+name = "lintbook-lang-sql"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lintbook-core = { path = "../lintbook-core" }
+tree-sitter = { workspace = true }
+tree-sitter-sequel = { workspace = true }
+serde = { workspace = true }

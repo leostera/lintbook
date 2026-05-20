@@ -1,0 +1,1 @@
+node(Node, "call_expression", _, _, _, _), text(Node, Text), matchesRegex(Text, "(mode|set_mode|from_mode|create_with_mode)\s*\("), matchesRegex(Text, "(^|[^0-9])(420|436|448|484|493|[0-7]{3,4})([^0-9]|$)"), notContains(Text, "0o"), notContains(Text, "0O"), notContains(Text, "0x"), notContains(Text, "0X"), notContains(Text, "0b"), notContains(Text, "0B")

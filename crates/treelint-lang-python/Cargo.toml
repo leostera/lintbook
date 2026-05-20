@@ -1,9 +1,0 @@
-[package]
-name = "treelint-lang-python"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-treelint-core = { path = "../treelint-core" }
-tree-sitter = { workspace = true }
-tree-sitter-python = { workspace = true }

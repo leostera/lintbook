@@ -1,0 +1,2 @@
+comparison(Node, Left, _, _), unitLike(Left);
+comparison(Node, _, _, Right), unitLike(Right)

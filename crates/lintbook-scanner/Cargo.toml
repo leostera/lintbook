@@ -1,0 +1,17 @@
+[package]
+name = "lintbook-scanner"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lintbook-lang = { path = "../lintbook-lang" }
+lintbook-core = { path = "../lintbook-core" }
+lintbook-config = { path = "../lintbook-config" }
+anyhow = { workspace = true }
+tree-sitter = { workspace = true }
+serde = { workspace = true }
+ignore = "0.4"
+num_cpus = "1.16"
+
+[dev-dependencies]
+tempfile = "3.0"

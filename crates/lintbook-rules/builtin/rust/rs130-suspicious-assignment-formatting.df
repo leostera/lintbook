@@ -1,0 +1,1 @@
+node(Node, "assignment_expression", _, _, _, _), text(Node, Text), matchesRegex(Text, "=[ \t][+-]")

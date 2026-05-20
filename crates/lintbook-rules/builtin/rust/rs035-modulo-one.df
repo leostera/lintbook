@@ -1,0 +1,1 @@
+node(Node, "binary_expression", _, _, _, _), field(Node, "operator", Operator), text(Operator, "%"), field(Node, "right", Right), text(Right, "1"); node(Node, "binary_expression", _, _, _, _), field(Node, "operator", Operator), text(Operator, "%"), field(Node, "right", Right), text(Right, "-1")

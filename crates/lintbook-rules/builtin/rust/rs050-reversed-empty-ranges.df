@@ -1,0 +1,2 @@
+node(Node, "range_expression", _, _, _, _), rangeBounds(Node, Left, Right), intLiteralValue(Left, LeftValue), intLiteralValue(Right, RightValue), LeftValue > RightValue;
+node(Node, "range_inclusive_expression", _, _, _, _), rangeBounds(Node, Left, Right), intLiteralValue(Left, LeftValue), intLiteralValue(Right, RightValue), LeftValue > RightValue

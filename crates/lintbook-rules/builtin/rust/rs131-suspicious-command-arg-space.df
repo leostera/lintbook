@@ -1,0 +1,2 @@
+node(Node, "call_expression", _, _, _, _), text(Node, Text), contains(Text, ".arg("), field(Node, "arguments", Args), argument(Args, Lit, _), literal(Lit, "string", _, Arg), contains(Arg, " ");
+node(Node, "call_expression", _, _, _, _), text(Node, Text), contains(Text, "Command::"), field(Node, "arguments", Args), argument(Args, Lit, _), literal(Lit, "string", _, Arg), contains(Arg, " ")

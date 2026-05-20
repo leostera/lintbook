@@ -1,0 +1,1 @@
+line(Node, _, Text, _, _), contains(Text, "////")

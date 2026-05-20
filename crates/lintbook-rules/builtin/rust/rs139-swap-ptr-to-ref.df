@@ -1,0 +1,3 @@
+node(Node, "call_expression", _, _, _, _), text(Node, Text), matchesRegex(Text, "(ptr::swap|mem::swap)"), contains(Text, "&"), contains(Text, "*mut");
+node(Node, "call_expression", _, _, _, _), text(Node, Text), matchesRegex(Text, "(ptr::swap|mem::swap)"), contains(Text, "&"), contains(Text, "*const");
+node(Node, "call_expression", _, _, _, _), text(Node, Text), matchesRegex(Text, "(ptr::swap|mem::swap)"), contains(Text, "&"), contains(Text, "as_ptr")

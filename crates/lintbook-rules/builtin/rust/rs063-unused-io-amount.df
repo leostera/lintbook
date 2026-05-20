@@ -1,0 +1,1 @@
+node(Node, "expression_statement", _, _, _, _), statementExpression(Node, Call), node(Call, "call_expression", _, _, _, _), text(Call, Text), matchesRegex(Text, "\.(read|write|read_exact|write_all|read_to_end|read_to_string|read_vectored|write_vectored|read_buf|write_buf|copy|copy_buf)\s*\(")

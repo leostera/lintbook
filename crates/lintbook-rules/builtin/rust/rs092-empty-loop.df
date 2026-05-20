@@ -1,0 +1,1 @@
+node(Node, "loop_expression", _, _, _, _), text(Node, Text), matchesRegex(Text, "^loop\s*\{\s*\}$")

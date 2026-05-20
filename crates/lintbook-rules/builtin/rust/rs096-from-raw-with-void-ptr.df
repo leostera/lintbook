@@ -1,0 +1,1 @@
+node(Node, "call_expression", _, _, _, _), text(Node, Text), contains(Text, "from_raw"), matchesRegex(Text, "(\*const c_void|\*mut c_void|\*const std::ffi::c_void|\*mut std::ffi::c_void|void_ptr|as \*const c_void|as \*mut c_void)")

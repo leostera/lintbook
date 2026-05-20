@@ -1,0 +1,10 @@
+[lintbook]
+languages = [
+    "rust",
+    "python",
+    "markdown",
+    "toml",
+]
+autofix = true
+
+[lints]

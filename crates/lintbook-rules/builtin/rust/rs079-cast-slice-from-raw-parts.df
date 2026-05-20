@@ -1,0 +1,5 @@
+node(Node, "call_expression", _, _, _, _), text(Node, Text), contains(Text, "from_raw_parts"), contains(Text, " as *");
+node(Node, "call_expression", _, _, _, _), text(Node, Text), contains(Text, "from_raw_parts"), contains(Text, "transmute");
+node(Node, "call_expression", _, _, _, _), text(Node, Text), contains(Text, "from_raw_parts"), contains(Text, "cast()");
+node(Node, "call_expression", _, _, _, _), text(Node, Text), contains(Text, "from_raw_parts"), contains(Text, "size_of");
+node(Node, "call_expression", _, _, _, _), text(Node, Text), contains(Text, "from_raw_parts"), contains(Text, "align_of")

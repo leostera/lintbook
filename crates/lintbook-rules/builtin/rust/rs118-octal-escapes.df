@@ -1,0 +1,2 @@
+node(Node, "string_literal", _, _, _, _), text(Node, Text), matchesRegex(Text, "\\[0-7]{1,3}");
+node(Node, "char_literal", _, _, _, _), text(Node, Text), matchesRegex(Text, "\\[0-7]{1,3}")

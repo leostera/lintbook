@@ -1,0 +1,1 @@
+node(Node, "let_declaration", _, _, _, _), field(Node, "pattern", Pattern), text(Pattern, "_"), field(Node, "value", Value), text(Value, Text), matchesRegex(Text, "\.(lock|try_lock|read|write|try_read|try_write|blocking_lock|blocking_read|blocking_write)\s*\(")

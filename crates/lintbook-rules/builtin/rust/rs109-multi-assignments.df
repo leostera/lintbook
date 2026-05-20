@@ -1,0 +1,2 @@
+assignment(Node, Left, _), node(Left, "assignment_expression", _, _, _, _);
+assignment(Node, _, Right), node(Right, "assignment_expression", _, _, _, _)

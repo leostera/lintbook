@@ -1,0 +1,10 @@
+attributeName(Node, "inline"), nextCodeSibling(Node, Target), node(Target, "trait_item", _, _, _, _);
+attributeName(Node, "cold"), nextCodeSibling(Node, Target), node(Target, "trait_item", _, _, _, _);
+attributeName(Node, "hot"), nextCodeSibling(Node, Target), node(Target, "trait_item", _, _, _, _);
+attributeName(Node, "inline"), nextCodeSibling(Node, Target), node(Target, "struct_item", _, _, _, _);
+attributeName(Node, "cold"), nextCodeSibling(Node, Target), node(Target, "struct_item", _, _, _, _);
+attributeName(Node, "hot"), nextCodeSibling(Node, Target), node(Target, "struct_item", _, _, _, _);
+attributeName(Node, "inline"), nextCodeSibling(Node, Target), node(Target, "enum_item", _, _, _, _);
+attributeName(Node, "cold"), nextCodeSibling(Node, Target), node(Target, "enum_item", _, _, _, _);
+attributeName(Node, "hot"), nextCodeSibling(Node, Target), node(Target, "enum_item", _, _, _, _);
+attributeName(Node, "inline"), nextCodeSibling(Node, Target), node(Target, "function_item", _, _, _, _), !field(Target, "body", _)

@@ -1,0 +1,1 @@
+node(Node, "macro_invocation", _, _, _, _), text(Node, Text), startsWith(Text, "asm!"), contains(Text, "nomem"), contains(Text, "*"), matchesRegex(Text, "(ptr|&|as \*|deref|addr_of)")

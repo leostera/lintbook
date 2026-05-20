@@ -1,0 +1,1 @@
+moduleDecl(Previous, Name), moduleDecl(Node, Name), Node > Previous

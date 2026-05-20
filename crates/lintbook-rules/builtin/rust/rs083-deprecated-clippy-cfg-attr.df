@@ -1,0 +1,2 @@
+node(Node, "attribute_item", _, _, _, _), text(Node, Text), contains(Text, "clippy"), contains(Text, "cargo-clippy");
+node(Node, "attribute_item", _, _, _, _), text(Node, Text), contains(Text, "cfg(clippy)")

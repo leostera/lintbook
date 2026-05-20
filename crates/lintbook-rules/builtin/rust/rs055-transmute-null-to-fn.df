@@ -1,0 +1,1 @@
+node(Node, "call_expression", _, _, _, _), text(Node, Text), contains(Text, "transmute"), matchesRegex(Text, "(fn\s*\(|fn\s|function|\*const fn|\*mut fn)"), matchesRegex(Text, "(0usize|0isize|0u64|0i64|0u32|0i32|0|ptr::null\s*\(\)|ptr::null_mut\s*\(\)|std::ptr::null\s*\(\)|std::ptr::null_mut\s*\(\)|null\s*\(\)|null_mut\s*\(\)|0\s+as\s+\*)")

@@ -1,0 +1,1 @@
+node(Node, "line_comment", _, _, _, _), text(Node, Text), matchesRegex(Text, "^(///|//!)"), nextSibling(Node, Next), lineGap(Node, Next, 0), node(Next, Kind, _, _, _, _), notMatchesRegex(Kind, "^line_comment$")

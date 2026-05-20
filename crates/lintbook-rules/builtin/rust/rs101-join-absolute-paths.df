@@ -1,0 +1,2 @@
+node(Node, "call_expression", _, _, _, _), text(Node, Text), contains(Text, ".join("), field(Node, "arguments", Args), argument(Args, Lit, _), literal(Lit, "string", _, Path), startsWith(Path, "/");
+node(Node, "call_expression", _, _, _, _), text(Node, Text), contains(Text, ".join("), field(Node, "arguments", Args), argument(Args, Lit, _), literal(Lit, "string", _, Path), matchesRegex(Path, "^[A-Za-z]:")

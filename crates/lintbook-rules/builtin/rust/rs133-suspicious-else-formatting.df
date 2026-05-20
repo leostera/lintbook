@@ -1,0 +1,4 @@
+node(Node, "if_expression", _, _, _, _), text(Node, Text), matchesRegex(Text, "}\s*\n\s*else");
+node(Node, "if_expression", _, _, _, _), text(Node, Text), contains(Text, "} else{");
+node(Node, "if_expression", _, _, _, _), text(Node, Text), contains(Text, "}else ");
+node(Node, "if_expression", _, _, _, _), text(Node, Text), contains(Text, "}		else")

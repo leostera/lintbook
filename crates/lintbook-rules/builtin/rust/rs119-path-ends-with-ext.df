@@ -1,0 +1,1 @@
+node(Node, "call_expression", _, _, _, _), text(Node, Text), contains(Text, ".ends_with("), field(Node, "arguments", Args), argument(Args, Lit, _), literal(Lit, "string", _, Suffix), matchesRegex(Suffix, "^\.[A-Za-z0-9]{1,4}$")

@@ -1,0 +1,1 @@
+node(Node, "compound_assignment_expr", _, _, _, _), field(Node, "left", Left), field(Node, "right", Right), node(Right, "binary_expression", _, _, _, _), field(Right, "left", RightLeft), trimmedText(Left, Operand), trimmedText(RightLeft, Operand)

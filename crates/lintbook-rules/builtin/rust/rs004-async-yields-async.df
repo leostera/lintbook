@@ -1,0 +1,1 @@
+node(Node, "async_block", _, _, _, _), text(Node, Text), notContains(Text, ".await"), matchesRegex(Text, "(spawn|timeout|sleep|Future::|_async\s*\()")

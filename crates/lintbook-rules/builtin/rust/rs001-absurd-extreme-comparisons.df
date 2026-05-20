@@ -1,0 +1,2 @@
+comparison(Node, Left, _, _), extremeValue(Left);
+comparison(Node, _, _, Right), extremeValue(Right)

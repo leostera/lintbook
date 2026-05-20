@@ -1,0 +1,1 @@
+node(Node, "attribute_item", _, _, _, _), text(Node, Text), startsWith(Text, "#[repr("), contains(Text, "packed"), notContains(Text, "C,"), notContains(Text, "transparent")

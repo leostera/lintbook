@@ -1,0 +1,2 @@
+node(Node, "assignment_expression", _, _, _, _), field(Node, "left", Left), field(Node, "right", Right), text(Left, Text), text(Right, Text);
+node(Node, "compound_assignment_expr", _, _, _, _), field(Node, "left", Left), field(Node, "right", Right), text(Left, Text), text(Right, Text)

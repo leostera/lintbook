@@ -1,0 +1,1 @@
+node(Node, "macro_invocation", _, _, _, _), text(Node, Text), contains(Text, "dbg!")

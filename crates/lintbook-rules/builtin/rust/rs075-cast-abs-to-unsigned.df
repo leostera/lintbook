@@ -1,0 +1,1 @@
+node(Node, "type_cast_expression", _, _, _, _), field(Node, "value", ValueNode), field(Node, "type", TypeNode), text(ValueNode, ValueText), text(TypeNode, TypeText), matchesRegex(ValueText, "(^|\.|::)abs\s*\("), matchesRegex(TypeText, "^(u8|u16|u32|u64|u128|usize|std::u8|std::u16|std::u32|std::u64|std::u128|std::usize)$")

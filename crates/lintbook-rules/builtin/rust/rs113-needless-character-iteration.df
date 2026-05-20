@@ -1,0 +1,2 @@
+node(Node, "call_expression", _, _, _, _), text(Node, Text), contains(Text, ".chars().nth(0)");
+node(Node, "call_expression", _, _, _, _), text(Node, Text), contains(Text, ".chars().last()"), contains(Text, ".collect::<String>()")

@@ -1,0 +1,1 @@
+assignment(Node, FirstLeft, FirstRight), statementExpression(FirstStatement, Node), nextCodeSibling(FirstStatement, SecondStatement), statementExpression(SecondStatement, SecondAssignment), assignment(SecondAssignment, SecondLeft, SecondRight), text(FirstLeft, LeftText), text(SecondRight, LeftText), text(FirstRight, RightText), text(SecondLeft, RightText)

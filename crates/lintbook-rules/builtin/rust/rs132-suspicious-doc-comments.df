@@ -1,0 +1,5 @@
+node(Node, "line_comment", _, _, _, _), trimmedText(Node, Text), startsWith(Text, "///<");
+node(Node, "line_comment", _, _, _, _), trimmedText(Node, Text), startsWith(Text, "//!<");
+node(Node, "line_comment", _, _, _, _), trimmedText(Node, Text), startsWith(Text, "////");
+node(Node, "block_comment", _, _, _, _), trimmedText(Node, Text), startsWith(Text, "/**<");
+node(Node, "block_comment", _, _, _, _), trimmedText(Node, Text), startsWith(Text, "/**"), notEndsWith(Text, "*/")

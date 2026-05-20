@@ -1,0 +1,3 @@
+node(Node, "unary_expression", _, _, _, _), text(Node, Text), contains(Text, "! ");
+node(Node, "unary_expression", _, _, _, _), text(Node, Text), contains(Text, "- ");
+node(Node, "unary_expression", _, _, _, _), text(Node, Text), contains(Text, "+ ")

@@ -1,0 +1,2 @@
+node(Node, "function_signature_item", _, _, _, _), text(Node, Text), contains(Text, "#[inline");
+node(Node, "function_signature_item", _, _, _, _), previousSibling(Node, Attr), node(Attr, "attribute_item", _, _, _, _), text(Attr, Text), contains(Text, "#[inline")

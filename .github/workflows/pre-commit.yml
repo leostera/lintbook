@@ -6,7 +6,7 @@ on:
     branches: [ main ]
 
 jobs:
-  treelint:
+  lintbook:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -23,8 +23,8 @@ jobs:
           target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
         
-    - name: Build treelint
-      run: cargo build --bin treelint
+    - name: Build lintbook
+      run: cargo build --bin lintbook
       
-    - name: Run treelint on codebase
-      run: ./target/debug/treelint
+    - name: Run lintbook on codebase
+      run: ./target/debug/lintbook check

@@ -1,0 +1,2 @@
+rangeBounds(_, Node, _), node(Node, "identifier", _, _, _, _), text(Node, Name), matchesRegex(Name, "^(mut_.*|.*_mut)$");
+rangeBounds(_, _, Node), node(Node, "identifier", _, _, _, _), text(Node, Name), matchesRegex(Name, "^(mut_.*|.*_mut)$")

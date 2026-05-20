@@ -1,0 +1,1 @@
+node(Node, "let_declaration", _, _, _, _), field(Node, "pattern", Pattern), text(Pattern, "_"), field(Node, "value", ValueNode), text(ValueNode, ValueText), notContains(ValueText, ".await"), matchesRegex(ValueText, "(async|Future|futures::|tokio::|async_std::|_async\s*\()")

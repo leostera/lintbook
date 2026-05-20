@@ -1,0 +1,1 @@
+node(Node, "call_expression", _, _, _, _), text(Node, Text), matchesRegex(Text, "unwrap_or(_else)?\s*\(\s*(Default::default\s*\(\)|Vec::new\s*\(\)|String::new\s*\(\)|HashMap::new\s*\(\)|HashSet::new\s*\(\)|0|false|None)")
