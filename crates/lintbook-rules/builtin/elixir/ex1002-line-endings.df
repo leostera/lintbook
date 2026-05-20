@@ -1,0 +1,2 @@
+lineEnding(Node, "lf"), lineEnding(_, "crlf");
+lineEnding(Node, "crlf"), lineEnding(_, "lf")

@@ -16,7 +16,7 @@ use std::sync::Arc;
 use tree_sitter::{Node, Parser};
 
 const SCHEMA_VERSION: u32 = 2;
-const FACT_SCHEMA_VERSION: u32 = 11;
+const FACT_SCHEMA_VERSION: u32 = 12;
 const BINCODE_CACHE_FORMAT_VERSION: u32 = 2;
 const LINTBOOK_DIR: &str = ".lintbook";
 const RULES_DIR: &str = "rules";
@@ -713,6 +713,20 @@ const BUILTIN_RULES: &[BuiltinRuleAsset] = &[
         query: include_str!("../builtin/python/py034-late-future-import.df"),
     },
     BuiltinRuleAsset {
+        name: "line-endings",
+        markdown_path: "builtin/elixir/ex1002-line-endings.md",
+        query_path: "builtin/elixir/ex1002-line-endings.df",
+        markdown: include_str!("../builtin/elixir/ex1002-line-endings.md"),
+        query: include_str!("../builtin/elixir/ex1002-line-endings.df"),
+    },
+    BuiltinRuleAsset {
+        name: "tabs_or_spaces",
+        markdown_path: "builtin/elixir/ex1007-tabs-or-spaces.md",
+        query_path: "builtin/elixir/ex1007-tabs-or-spaces.df",
+        markdown: include_str!("../builtin/elixir/ex1007-tabs-or-spaces.md"),
+        query: include_str!("../builtin/elixir/ex1007-tabs-or-spaces.df"),
+    },
+    BuiltinRuleAsset {
         name: "iex-pry",
         markdown_path: "builtin/elixir/ex3001-iex-pry.md",
         query_path: "builtin/elixir/ex3001-iex-pry.df",
@@ -843,6 +857,8 @@ Available Rust facts:
 - line(Line, LineNumber, Text, StartByte, EndByte)
 - nextLine(Line, NextLine)
 - previousLine(NextLine, Line)
+- lineEnding(Line, Style)
+- lineIndent(Line, Style)
 - pythonOutsideLoop(Node)
 - pythonOutsideFunction(Node)
 - pythonInsideFinally(Node)
@@ -876,6 +892,8 @@ Fact semantics:
 - `nextCodeSibling` is direct adjacent sibling order after skipping comments and anonymous punctuation.
 - `lineGap(Left, Right, BlankLineCount)` counts blank physical lines between adjacent sibling nodes.
 - `nextLine` and `previousLine` are direct adjacent source-line relationships.
+- `lineEnding` stores `lf` or `crlf` for lines with an explicit line ending.
+- `lineIndent` stores `tabs`, `spaces`, or `mixed` for lines with leading indentation.
 - Python helper facts expose reusable context, import binding, and `__future__` import ordering checks for Python rules.
 
 Example rules:
@@ -1975,6 +1993,8 @@ fn all_fact_predicates() -> BTreeSet<String> {
         "line",
         "nextLine",
         "previousLine",
+        "lineEnding",
+        "lineIndent",
         "pythonOutsideLoop",
         "pythonOutsideFunction",
         "pythonInsideFinally",
@@ -2102,7 +2122,13 @@ fn build_fact_set_for_predicates(
         next_line_id: -1,
     };
     builder.visit(tree.root_node(), None, 0, &[]);
-    if builder.wants_any(&["line", "nextLine", "previousLine"]) {
+    if builder.wants_any(&[
+        "line",
+        "nextLine",
+        "previousLine",
+        "lineEnding",
+        "lineIndent",
+    ]) {
         builder.insert_line_facts();
     }
     if builder.wants("invisibleCharacter") {
@@ -2853,7 +2879,7 @@ impl<'a> FactBuilder<'a> {
 
     fn insert_line_facts(&mut self) {
         if self.source.is_empty() {
-            self.insert_line_fact(1, "", 0);
+            self.insert_line_fact(1, "", 0, None);
             return;
         }
 
@@ -2864,8 +2890,17 @@ impl<'a> FactBuilder<'a> {
             if index == parts.len() - 1 && raw_line.is_empty() && self.source.ends_with('\n') {
                 break;
             }
+            let ending = if index < parts.len() - 1 {
+                if raw_line.ends_with('\r') {
+                    Some("crlf")
+                } else {
+                    Some("lf")
+                }
+            } else {
+                None
+            };
             let line_text = raw_line.strip_suffix('\r').unwrap_or(raw_line);
-            let line_id = self.insert_line_fact(index + 1, line_text, start_byte);
+            let line_id = self.insert_line_fact(index + 1, line_text, start_byte, ending);
             if let Some(previous_line_id) = previous_line_id {
                 if self.wants("nextLine") {
                     self.insert(
@@ -2885,7 +2920,13 @@ impl<'a> FactBuilder<'a> {
         }
     }
 
-    fn insert_line_fact(&mut self, line_number: usize, text: &str, start_byte: usize) -> i64 {
+    fn insert_line_fact(
+        &mut self,
+        line_number: usize,
+        text: &str,
+        start_byte: usize,
+        ending: Option<&str>,
+    ) -> i64 {
         let id = self.next_line_id;
         self.next_line_id -= 1;
         let end_byte = start_byte + text.len();
@@ -2907,6 +2948,22 @@ impl<'a> FactBuilder<'a> {
                     Value::integer(end_byte as i64),
                 ],
             );
+        }
+        if let Some(ending) = ending {
+            if self.wants("lineEnding") {
+                self.insert(
+                    "lineEnding",
+                    vec![Value::integer(id), Value::string(ending)],
+                );
+            }
+        }
+        if self.wants("lineIndent") {
+            if let Some(indent) = line_indentation_style(text) {
+                self.insert(
+                    "lineIndent",
+                    vec![Value::integer(id), Value::string(indent)],
+                );
+            }
         }
         if self.wants("location") {
             self.insert(
@@ -3042,6 +3099,29 @@ fn is_comparison_operator(operator: &str) -> bool {
 
 fn collapse_whitespace(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn line_indentation_style(text: &str) -> Option<&'static str> {
+    if text.trim().is_empty() {
+        return None;
+    }
+
+    let mut has_tabs = false;
+    let mut has_spaces = false;
+    for ch in text.chars() {
+        match ch {
+            '\t' => has_tabs = true,
+            ' ' => has_spaces = true,
+            _ => break,
+        }
+    }
+
+    match (has_tabs, has_spaces) {
+        (true, true) => Some("mixed"),
+        (true, false) => Some("tabs"),
+        (false, true) => Some("spaces"),
+        (false, false) => None,
+    }
 }
 
 fn parse_integer_literal_value(text: &str) -> Option<i64> {
@@ -3616,7 +3696,7 @@ Avoid dbg! in committed code.
     #[test]
     fn compiles_embedded_builtin_rules() {
         let rules = compile_builtin_rules().unwrap();
-        assert_eq!(rules.len(), 107);
+        assert_eq!(rules.len(), 109);
         assert!(rules.iter().any(|rule| {
             rule.id == "RS013"
                 && rule.name == "eq-op"
@@ -4470,6 +4550,25 @@ fn main() {
     #[tokio::test]
     async fn embedded_elixir_rules_match_positive_and_negative_samples() {
         let cases = [
+            BuiltinRuleFixture {
+                rule_id: "EX1002",
+                positives: &["defmodule Test do\n  def hello do\r\n    :world\n  end\r\nend\n"],
+                negatives: &[
+                    "defmodule Test do\n  def hello do\n    :world\n  end\nend\n",
+                    "defmodule Test do\r\n  def hello do\r\n    :world\r\n  end\r\nend\r\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "EX1007",
+                positives: &[
+                    "defmodule Example do\n\t  def mixed do\n    :ok\n  end\nend\n",
+                    "defmodule Example do\n  def spaces do\n    :ok\n  end\n\tdef tabs do\n\t\t:ok\n\tend\nend\n",
+                ],
+                negatives: &[
+                    "defmodule Example do\n  def spaces do\n    :ok\n  end\nend\n",
+                    "defmodule Example do\n\tdef tabs do\n\t\t:ok\n\tend\nend\n",
+                ],
+            },
             BuiltinRuleFixture {
                 rule_id: "EX3001",
                 positives: &[

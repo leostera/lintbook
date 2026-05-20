@@ -137,6 +137,8 @@ The parked Elixir crate remains in the tree while rules are converted gradually.
 
 | Rule | Name | Status | Notes |
 | --- | --- | --- | --- |
+| EX1002 | line-endings | converted-enabled | Uses reusable line-ending style facts. |
+| EX1007 | tabs_or_spaces | converted-enabled | Uses reusable line indentation facts. |
 | EX3001 | iex-pry | converted-enabled | Uses call function text matching. |
 | EX3002 | io-inspect | converted-enabled | Uses call function text plus import detection. |
 | EX3010 | trailing-whitespace | converted-enabled | Uses synthetic line facts. |

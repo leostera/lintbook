@@ -1,0 +1,3 @@
+lineIndent(Node, "mixed");
+lineIndent(Node, "tabs"), lineIndent(_, "spaces");
+lineIndent(Node, "spaces"), lineIndent(_, "tabs")
