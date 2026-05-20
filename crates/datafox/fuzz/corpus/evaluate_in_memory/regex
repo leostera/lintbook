@@ -1,1 +1,0 @@
-text(Node, Text), matchesRegex(Text, "^dbg!")

@@ -1,6 +1,5 @@
 [workspace]
 members = [
-    "crates/datafox",
     "crates/lintbook-cli",
     "crates/lintbook-config",
     "crates/lintbook-core",
@@ -32,6 +31,7 @@ tracing = "0.1"
 tracing-subscriber = "0.3"
 uuid = { version = "1.0", features = ["v4"] }
 async-trait = "0.1"
+datafox = { path = "../datafox" }
 hex = "0.4"
 regex = "1.10"
 sha2 = "0.11"

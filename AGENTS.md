@@ -12,7 +12,7 @@ This file provides guidance for coding agents working with this repository.
 
 - `crates/lintbook-cli` provides the `lintbook` binary.
 - `crates/lintbook-rules` owns `.lintbook/rules` parsing, `.lintbook/gen` compilation, Rust tree-sitter fact extraction, and Datafox evaluation.
-- `crates/datafox` is the Datalog parser and streaming query engine.
+- `../datafox` is the sibling Datalog parser and streaming query engine crate used through a path dependency.
 - `crates/lintbook-lang` owns grammar detection, parser wiring, and AST dumping.
 - `crates/lintbook-config`, `lintbook-core`, and `lintbook-scanner` provide shared config, result, and file scanning types.
 - `crates/lintbook-mcp` exposes MCP guidance and compile tooling.

@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 anyhow = { workspace = true }
 bincode = "1.3"
-datafox = { path = "../datafox" }
+datafox.workspace = true
 hex = { workspace = true }
 lintbook-config = { path = "../lintbook-config" }
 lintbook-core = { path = "../lintbook-core" }
