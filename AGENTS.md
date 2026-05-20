@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with this repository.
+This file provides guidance for coding agents working with this repository.
 
 # lintbook
 
