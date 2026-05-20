@@ -1,0 +1,4 @@
+interface:
+  display_name: "Lintbook Performance"
+  short_description: "Profile and optimize lintbook with cargo flamegraph."
+  default_prompt: "Use this skill when profiling lintbook performance, especially cargo flamegraph runs, check timing, cache behavior, and parallelism."
