@@ -1,11 +1,7 @@
-pub mod py001_no_try_catch;
-pub mod py002_no_sys_path_modification;
 pub mod py020_break_outside_loop;
 pub mod py021_continue_outside_loop;
 pub mod py022_yield_outside_function;
 pub mod py023_return_outside_function;
-pub mod py024_default_except_not_last;
-pub mod py025_raise_not_implemented;
 pub mod py026_return_in_init;
 pub mod py027_nonlocal_and_global;
 pub mod py028_continue_in_finally;
@@ -21,14 +17,10 @@ use lintbook_core::Rule;
 /// Returns all Python lint rules
 pub fn lints() -> Vec<Box<dyn Rule>> {
     vec![
-        Box::new(py001_no_try_catch::NoTryCatch),
-        Box::new(py002_no_sys_path_modification::NoSysPathModification),
         Box::new(py020_break_outside_loop::BreakOutsideLoop),
         Box::new(py021_continue_outside_loop::ContinueOutsideLoop),
         Box::new(py022_yield_outside_function::YieldOutsideFunction),
         Box::new(py023_return_outside_function::ReturnOutsideFunction),
-        Box::new(py024_default_except_not_last::DefaultExceptNotLast),
-        Box::new(py025_raise_not_implemented::RaiseNotImplemented),
         Box::new(py026_return_in_init::ReturnInInit),
         Box::new(py027_nonlocal_and_global::NonlocalAndGlobal),
         Box::new(py028_continue_in_finally::ContinueInFinally),

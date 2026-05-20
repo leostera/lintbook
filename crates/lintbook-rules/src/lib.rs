@@ -27,6 +27,20 @@ const PREPARED_QUERIES_DIR: &str = "prepared-queries";
 
 const BUILTIN_RULES: &[BuiltinRuleAsset] = &[
     BuiltinRuleAsset {
+        name: "no-try-catch",
+        markdown_path: "builtin/python/py001-no-try-catch.md",
+        query_path: "builtin/python/py001-no-try-catch.df",
+        markdown: include_str!("../builtin/python/py001-no-try-catch.md"),
+        query: include_str!("../builtin/python/py001-no-try-catch.df"),
+    },
+    BuiltinRuleAsset {
+        name: "no-sys-path-modification",
+        markdown_path: "builtin/python/py002-no-sys-path-modification.md",
+        query_path: "builtin/python/py002-no-sys-path-modification.df",
+        markdown: include_str!("../builtin/python/py002-no-sys-path-modification.md"),
+        query: include_str!("../builtin/python/py002-no-sys-path-modification.df"),
+    },
+    BuiltinRuleAsset {
         name: "absurd-extreme-comparisons",
         markdown_path: "builtin/rust/rs001-absurd-extreme-comparisons.md",
         query_path: "builtin/rust/rs001-absurd-extreme-comparisons.df",
@@ -592,6 +606,20 @@ const BUILTIN_RULES: &[BuiltinRuleAsset] = &[
         query_path: "builtin/python/py019-if-tuple.df",
         markdown: include_str!("../builtin/python/py019-if-tuple.md"),
         query: include_str!("../builtin/python/py019-if-tuple.df"),
+    },
+    BuiltinRuleAsset {
+        name: "default-except-not-last",
+        markdown_path: "builtin/python/py024-default-except-not-last.md",
+        query_path: "builtin/python/py024-default-except-not-last.df",
+        markdown: include_str!("../builtin/python/py024-default-except-not-last.md"),
+        query: include_str!("../builtin/python/py024-default-except-not-last.df"),
+    },
+    BuiltinRuleAsset {
+        name: "raise-not-implemented",
+        markdown_path: "builtin/python/py025-raise-not-implemented.md",
+        query_path: "builtin/python/py025-raise-not-implemented.df",
+        markdown: include_str!("../builtin/python/py025-raise-not-implemented.md"),
+        query: include_str!("../builtin/python/py025-raise-not-implemented.df"),
     },
 ];
 
@@ -3114,7 +3142,7 @@ Avoid dbg! in committed code.
     #[test]
     fn compiles_embedded_builtin_rules() {
         let rules = compile_builtin_rules().unwrap();
-        assert_eq!(rules.len(), 81);
+        assert_eq!(rules.len(), 85);
         assert!(rules.iter().any(|rule| {
             rule.id == "RS013"
                 && rule.name == "eq-op"
@@ -3571,6 +3599,23 @@ fn main() {
     async fn embedded_python_rules_match_positive_and_negative_samples() {
         let cases = [
             BuiltinRuleFixture {
+                rule_id: "PY001",
+                positives: &[
+                    "try:\n    risky_operation()\nexcept Exception:\n    pass\n",
+                    "try:\n    operation1()\nexcept:\n    pass\n\ntry:\n    operation2()\nexcept:\n    pass\n",
+                ],
+                negatives: &["def safe_function():\n    return 'ok'\n"],
+            },
+            BuiltinRuleFixture {
+                rule_id: "PY002",
+                positives: &[
+                    "import sys\nsys.path.append('/some/path')\n",
+                    "import sys\nsys.path.insert(0, '/some/path')\n",
+                    "import sys\nsys.path = ['/new/path']\n",
+                ],
+                negatives: &["import sys\nprint(sys.path)\n"],
+            },
+            BuiltinRuleFixture {
                 rule_id: "PY003",
                 positives: &[
                     "import os\nport = os.getenv('PORT')\n",
@@ -3748,6 +3793,32 @@ fn main() {
                     "if (x > 0):\n    pass\n",
                     "if ():\n    pass\n",
                     "if x > 0:\n    pass\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "PY024",
+                positives: &[
+                    "try:\n    risky_operation()\nexcept:\n    pass\nexcept ValueError:\n    pass\n",
+                    "try:\n    operation()\nexcept:\n    pass\nexcept Exception as error:\n    pass\n",
+                    "try:\n    another_operation()\nexcept Exception:\n    pass\nexcept TypeError:\n    pass\n",
+                ],
+                negatives: &[
+                    "try:\n    risky_operation()\nexcept ValueError:\n    pass\nexcept Exception:\n    pass\nexcept:\n    pass\n",
+                    "try:\n    simple_operation()\nexcept:\n    pass\n",
+                    "try:\n    operation()\nexcept Exception as error:\n    pass\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "PY025",
+                positives: &[
+                    "def my_method():\n    raise NotImplemented\n",
+                    "def my_method():\n    raise NotImplemented()\n",
+                    "try:\n    something()\nexcept Exception as error:\n    raise NotImplemented from error\n",
+                ],
+                negatives: &[
+                    "def my_method():\n    raise NotImplementedError()\n",
+                    "def test():\n    raise ValueError('Invalid value')\n",
+                    "result = NotImplemented\n",
                 ],
             },
         ];

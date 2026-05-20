@@ -1,0 +1,2 @@
+node(Node, "raise_statement", _, _, _, _), child(Node, Raised, _), node(Raised, "identifier", _, _, _, _), text(Raised, "NotImplemented");
+node(Node, "raise_statement", _, _, _, _), child(Node, Raised, _), node(Raised, "call", _, _, _, _), field(Raised, "function", Function), text(Function, "NotImplemented")

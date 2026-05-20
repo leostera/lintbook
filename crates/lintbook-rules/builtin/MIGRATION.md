@@ -99,6 +99,8 @@ The parked Python crate remains in the tree while rules are converted gradually.
 
 | Rule | Name | Status | Notes |
 | --- | --- | --- | --- |
+| PY001 | no-try-catch | converted-enabled | Uses Python try statement nodes. |
+| PY002 | no-sys-path-modification | converted-enabled | Uses sys.path call/assignment shapes. |
 | PY003 | no-os-getenv | converted-enabled | Uses Python call/attribute tree-sitter fields. |
 | PY004 | no-bare-except | converted-enabled | Uses except-clause text matching. |
 | PY005 | none-comparison | converted-enabled | Uses comparison operator and `none` node facts. |
@@ -113,3 +115,5 @@ The parked Python crate remains in the tree while rules are converted gradually.
 | PY016 | assert-tuple | converted-enabled | Uses assert statement tuple child facts. |
 | PY017 | is-literal | converted-enabled | Uses identity comparison operators with literal child kinds. |
 | PY019 | if-tuple | converted-enabled | Uses if/elif tuple child facts. |
+| PY024 | default-except-not-last | converted-enabled | Uses direct try/except child order and except-clause text. |
+| PY025 | raise-not-implemented | converted-enabled | Uses raise statement child shapes. |
