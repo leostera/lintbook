@@ -1,7 +1,8 @@
 use anyhow::{anyhow, bail, Context, Result};
 use datafox::{
     Clause, DatafoxClient, DatafoxConfig, DatafoxEnvironment, InMemoryPreparedQueryStorage,
-    InMemoryStorage, PreparedQuery, Query, Substitution, Term, Value,
+    InMemoryStorage, PreparedQuery, PreparedQueryKey, PreparedQueryStorage, Query, Substitution,
+    Term, Value,
 };
 use lintbook_config::LintbookConfig;
 use lintbook_core::{LintResult, LintStatus, LintViolation};
@@ -21,6 +22,7 @@ const RULES_DIR: &str = "rules";
 const GEN_DIR: &str = "gen";
 const CACHE_DIR: &str = "cache";
 const FACTS_DIR: &str = "facts";
+const PREPARED_QUERIES_DIR: &str = "prepared-queries";
 
 const BUILTIN_RULES: &[BuiltinRuleAsset] = &[
     BuiltinRuleAsset {
@@ -703,6 +705,93 @@ pub fn cache_dir(repo_root: &Path) -> PathBuf {
     repo_root.join(LINTBOOK_DIR).join(CACHE_DIR)
 }
 
+fn prepared_query_cache_dir(repo_root: &Path) -> PathBuf {
+    cache_dir(repo_root)
+        .join(PREPARED_QUERIES_DIR)
+        .join(format!("v{}", datafox::PREPARED_QUERY_FORMAT_VERSION))
+}
+
+#[derive(Clone)]
+struct FilePreparedQueryStorage {
+    memory: InMemoryPreparedQueryStorage,
+    directory: PathBuf,
+}
+
+impl FilePreparedQueryStorage {
+    fn new(repo_root: &Path) -> Self {
+        Self {
+            memory: InMemoryPreparedQueryStorage::unbounded(),
+            directory: prepared_query_cache_dir(repo_root),
+        }
+    }
+
+    fn path_for(&self, key: &PreparedQueryKey) -> datafox::Result<PathBuf> {
+        let encoded = bincode::serialize(key).map_err(prepared_query_storage_error)?;
+        Ok(self
+            .directory
+            .join(format!("{}.bin", sha256_hex_bytes(&encoded))))
+    }
+}
+
+impl PreparedQueryStorage for FilePreparedQueryStorage {
+    fn get(&self, key: &PreparedQueryKey) -> datafox::Result<Option<Arc<PreparedQuery>>> {
+        if let Some(prepared) = self.memory.get(key)? {
+            return Ok(Some(prepared));
+        }
+
+        let path = self.path_for(key)?;
+        let bytes = match fs::read(&path) {
+            Ok(bytes) => bytes,
+            Err(_) => return Ok(None),
+        };
+        let prepared: PreparedQuery = match bincode::deserialize(&bytes) {
+            Ok(prepared) => prepared,
+            Err(_) => {
+                let _ = fs::remove_file(&path);
+                return Ok(None);
+            }
+        };
+        if prepared.validate().is_err() {
+            let _ = fs::remove_file(&path);
+            return Ok(None);
+        }
+
+        let prepared = Arc::new(prepared);
+        self.memory.insert(key.clone(), Arc::clone(&prepared))?;
+        Ok(Some(prepared))
+    }
+
+    fn insert(&self, key: PreparedQueryKey, prepared: Arc<PreparedQuery>) -> datafox::Result<()> {
+        self.memory.insert(key.clone(), Arc::clone(&prepared))?;
+
+        let path = self.path_for(&key)?;
+        let encoded =
+            bincode::serialize(prepared.as_ref()).map_err(prepared_query_storage_error)?;
+        let _ = write_prepared_query_cache_file(&path, &encoded);
+        Ok(())
+    }
+}
+
+fn write_prepared_query_cache_file(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+
+    let temp_path = path.with_extension(format!("bin.tmp-{}", std::process::id()));
+    if let Err(error) = fs::write(&temp_path, bytes).and_then(|()| fs::rename(&temp_path, path)) {
+        let _ = fs::remove_file(&temp_path);
+        return Err(error);
+    }
+
+    Ok(())
+}
+
+fn prepared_query_storage_error(error: impl std::fmt::Display) -> datafox::Error {
+    datafox::Error::PreparedQueryStorage {
+        message: error.to_string(),
+    }
+}
+
 pub fn compiled_rule_path(repo_root: &Path, id: &str) -> PathBuf {
     gen_dir(repo_root).join(format!("{}.json", sanitize_file_stem(id)))
 }
@@ -1051,7 +1140,7 @@ impl GeneratedRuleRunner {
     ) -> Result<Self> {
         let rules = load_all_rules(repo_root, config)?;
         let datafox_environment = DatafoxEnvironment::builder()
-            .with_prepared_query_storage(InMemoryPreparedQueryStorage::unbounded())
+            .with_prepared_query_storage(FilePreparedQueryStorage::new(repo_root))
             .build();
         let mut rules_by_language: HashMap<Grammar, Vec<PreparedCompiledRule>> = HashMap::new();
         for rule in rules {
@@ -2604,8 +2693,12 @@ fn normalize_char_literal(text: &str) -> String {
 }
 
 fn sha256_hex(source: &str) -> String {
+    sha256_hex_bytes(source.as_bytes())
+}
+
+fn sha256_hex_bytes(source: &[u8]) -> String {
     let mut hasher = Sha256::new();
-    hasher.update(source.as_bytes());
+    hasher.update(source);
     hex::encode(hasher.finalize())
 }
 
@@ -2768,6 +2861,33 @@ Avoid dbg! in committed code.
 
         assert!(runner.rules_by_language.contains_key(&Grammar::Rust));
         assert_eq!(runner.prepared_query_count(), expected_queries);
+    }
+
+    #[test]
+    fn prepared_queries_are_cached_on_disk() {
+        let temp = tempdir().unwrap();
+        let query = datafox::parse_query(
+            r#"node(Node, "macro_invocation", _, _, _, _), text(Node, Text), contains(Text, "dbg!")"#,
+        )
+        .unwrap();
+        let key = PreparedQueryKey::new(query.clone());
+        let storage = FilePreparedQueryStorage::new(temp.path());
+        let environment = DatafoxEnvironment::builder()
+            .with_prepared_query_storage(storage.clone())
+            .build();
+
+        let prepared = environment.prepare(&query).unwrap();
+        let path = storage.path_for(&key).unwrap();
+
+        assert!(path.exists());
+
+        let reloaded_storage = FilePreparedQueryStorage::new(temp.path());
+        let reloaded_environment = DatafoxEnvironment::builder()
+            .with_prepared_query_storage(reloaded_storage)
+            .build();
+        let reloaded = reloaded_environment.prepare(&query).unwrap();
+
+        assert_eq!(prepared.as_ref(), reloaded.as_ref());
     }
 
     #[test]
