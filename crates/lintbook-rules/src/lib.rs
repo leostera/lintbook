@@ -16,7 +16,7 @@ use std::sync::Arc;
 use tree_sitter::{Node, Parser};
 
 const SCHEMA_VERSION: u32 = 2;
-const FACT_SCHEMA_VERSION: u32 = 13;
+const FACT_SCHEMA_VERSION: u32 = 14;
 const BINCODE_CACHE_FORMAT_VERSION: u32 = 2;
 const LINTBOOK_DIR: &str = ".lintbook";
 const RULES_DIR: &str = "rules";
@@ -734,6 +734,13 @@ const BUILTIN_RULES: &[BuiltinRuleAsset] = &[
         query: include_str!("../builtin/elixir/ex1003-multi-alias-import-require-use.df"),
     },
     BuiltinRuleAsset {
+        name: "parameter_pattern_matching",
+        markdown_path: "builtin/elixir/ex1004-parameter-pattern-matching.md",
+        query_path: "builtin/elixir/ex1004-parameter-pattern-matching.df",
+        markdown: include_str!("../builtin/elixir/ex1004-parameter-pattern-matching.md"),
+        query: include_str!("../builtin/elixir/ex1004-parameter-pattern-matching.df"),
+    },
+    BuiltinRuleAsset {
         name: "space_around_operators",
         markdown_path: "builtin/elixir/ex1005-space-around-operators.md",
         query_path: "builtin/elixir/ex1005-space-around-operators.df",
@@ -902,6 +909,7 @@ Available Rust facts:
 - lineEnding(Line, Style)
 - lineIndent(Line, Style)
 - elixirNamespaceStatement(Node, Type, Base, Name)
+- elixirMixedPatternFunction(Node)
 - pythonOutsideLoop(Node)
 - pythonOutsideFunction(Node)
 - pythonInsideFinally(Node)
@@ -938,6 +946,7 @@ Fact semantics:
 - `lineEnding` stores `lf` or `crlf` for lines with an explicit line ending.
 - `lineIndent` stores `tabs`, `spaces`, or `mixed` for lines with leading indentation.
 - `elixirNamespaceStatement` exposes `alias`, `import`, `require`, and `use` module references split into base and leaf names.
+- `elixirMixedPatternFunction` marks function definitions whose map parameters mix key-matching and explicit-name styles.
 - Python helper facts expose reusable context, import binding, and `__future__` import ordering checks for Python rules.
 
 Example rules:
@@ -2040,6 +2049,7 @@ fn all_fact_predicates() -> BTreeSet<String> {
         "lineEnding",
         "lineIndent",
         "elixirNamespaceStatement",
+        "elixirMixedPatternFunction",
         "pythonOutsideLoop",
         "pythonOutsideFunction",
         "pythonInsideFinally",
@@ -2826,6 +2836,10 @@ impl<'a> FactBuilder<'a> {
         if self.wants("elixirNamespaceStatement") && kind == "call" {
             self.insert_elixir_namespace_statement(id, text, child_infos);
         }
+
+        if self.wants("elixirMixedPatternFunction") && kind == "call" {
+            self.insert_elixir_mixed_pattern_function(id, child_infos);
+        }
     }
 
     fn insert_elixir_namespace_statement(
@@ -2854,6 +2868,22 @@ impl<'a> FactBuilder<'a> {
                 Value::string(name),
             ],
         );
+    }
+
+    fn insert_elixir_mixed_pattern_function(&mut self, id: i64, child_infos: &[ChildFactInfo]) {
+        let Some(_) = child_infos
+            .first()
+            .map(|child| child.text.as_str())
+            .filter(|name| matches!(*name, "def" | "defp" | "defmacro" | "defmacrop"))
+        else {
+            return;
+        };
+        let Some(signature) = child_infos.get(1).map(|child| child.text.as_str()) else {
+            return;
+        };
+        if elixir_signature_has_mixed_map_patterns(signature) {
+            self.insert("elixirMixedPatternFunction", vec![Value::integer(id)]);
+        }
     }
 
     fn insert_python_late_future_import_facts(&mut self, child_infos: &[ChildFactInfo]) {
@@ -3197,6 +3227,54 @@ fn parse_elixir_namespace_statement(statement_type: &str, text: &str) -> Option<
 
 fn is_elixir_module_path_char(ch: char) -> bool {
     ch.is_ascii_alphanumeric() || ch == '_' || ch == '.'
+}
+
+fn elixir_signature_has_mixed_map_patterns(signature: &str) -> bool {
+    let mut has_key_matching = false;
+    let mut has_explicit_naming = false;
+    let mut index = 0usize;
+
+    while let Some(relative_start) = signature[index..].find("%{") {
+        let content_start = index + relative_start + 2;
+        let Some(relative_end) = signature[content_start..].find('}') else {
+            break;
+        };
+        let content = &signature[content_start..content_start + relative_end];
+        if let Some((key, value)) = elixir_first_map_pair(content) {
+            if key == value {
+                has_key_matching = true;
+            } else {
+                has_explicit_naming = true;
+            }
+            if has_key_matching && has_explicit_naming {
+                return true;
+            }
+        }
+        index = content_start;
+    }
+
+    false
+}
+
+fn elixir_first_map_pair(content: &str) -> Option<(String, String)> {
+    let (key, rest) = content.split_once(':')?;
+    let key = key.trim();
+    if !key.chars().all(is_elixir_identifier_char) {
+        return None;
+    }
+    let value = rest.trim_start();
+    let value = value
+        .chars()
+        .take_while(|ch| is_elixir_identifier_char(*ch))
+        .collect::<String>();
+    if value.is_empty() {
+        return None;
+    }
+    Some((key.to_string(), value))
+}
+
+fn is_elixir_identifier_char(ch: char) -> bool {
+    ch.is_ascii_alphanumeric() || ch == '_' || ch == '?' || ch == '!'
 }
 
 fn is_comparison_operator(operator: &str) -> bool {
@@ -3802,7 +3880,7 @@ Avoid dbg! in committed code.
     #[test]
     fn compiles_embedded_builtin_rules() {
         let rules = compile_builtin_rules().unwrap();
-        assert_eq!(rules.len(), 115);
+        assert_eq!(rules.len(), 116);
         assert!(rules.iter().any(|rule| {
             rule.id == "RS013"
                 && rule.name == "eq-op"
@@ -4684,6 +4762,18 @@ fn main() {
                 negatives: &[
                     "defmodule Example do\n  alias MyApp.{User, Post}\nend\n",
                     "defmodule Example do\n  alias MyApp.User\n  alias OtherApp.Post\nend\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "EX1004",
+                positives: &[
+                    "defmodule Example do\n  def mixed(%{name: name}, %{id: user_id}) do\n    {name, user_id}\n  end\nend\n",
+                    "defmodule Example do\n  def nested(%{user: %{name: name}}, %{post: %{id: post_id}}) do\n    {name, post_id}\n  end\nend\n",
+                ],
+                negatives: &[
+                    "defmodule Example do\n  def key_matching(%{name: name}, %{id: id}) do\n    {name, id}\n  end\nend\n",
+                    "defmodule Example do\n  def explicit(%{name: user_name}, %{id: user_id}) do\n    {user_name, user_id}\n  end\nend\n",
+                    "defmodule Example do\n  def single(%{name: name}) do\n    name\n  end\nend\n",
                 ],
             },
             BuiltinRuleFixture {

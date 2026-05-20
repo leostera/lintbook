@@ -140,6 +140,7 @@ The parked Elixir crate remains in the tree while rules are converted gradually.
 | EX1001 | exception-names | converted-enabled | Uses exception module text patterns. |
 | EX1002 | line-endings | converted-enabled | Uses reusable line-ending style facts. |
 | EX1003 | multi_alias_import_require_use | converted-enabled | Uses reusable namespace statement facts. |
+| EX1004 | parameter_pattern_matching | converted-enabled | Uses reusable mixed map-pattern function facts. |
 | EX1005 | space_around_operators | converted-enabled | Uses binary operator source text patterns. |
 | EX1006 | space_in_parentheses | converted-enabled | Uses line text bracket spacing patterns. |
 | EX1007 | tabs_or_spaces | converted-enabled | Uses reusable line indentation facts. |
