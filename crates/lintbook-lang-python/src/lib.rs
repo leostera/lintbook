@@ -1,9 +1,5 @@
 pub mod py001_no_try_catch;
 pub mod py002_no_sys_path_modification;
-pub mod py010_lambda_assignment;
-pub mod py012_invalid_escape_sequence;
-pub mod py014_f_string_missing_placeholders;
-pub mod py015_multi_value_repeated_key_literal;
 pub mod py016_assert_tuple;
 pub mod py017_is_literal;
 pub mod py019_if_tuple;
@@ -30,10 +26,6 @@ pub fn lints() -> Vec<Box<dyn Rule>> {
     vec![
         Box::new(py001_no_try_catch::NoTryCatch),
         Box::new(py002_no_sys_path_modification::NoSysPathModification),
-        Box::new(py010_lambda_assignment::LambdaAssignment),
-        Box::new(py012_invalid_escape_sequence::InvalidEscapeSequence),
-        Box::new(py014_f_string_missing_placeholders::FStringMissingPlaceholders),
-        Box::new(py015_multi_value_repeated_key_literal::MultiValueRepeatedKeyLiteral),
         Box::new(py016_assert_tuple::AssertTuple),
         Box::new(py017_is_literal::IsLiteral),
         Box::new(py019_if_tuple::IfTuple),

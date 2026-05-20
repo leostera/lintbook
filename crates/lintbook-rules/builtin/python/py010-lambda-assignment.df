@@ -1,0 +1,1 @@
+node(Node, "assignment", _, _, _, _), field(Node, "right", Right), node(Right, "lambda", _, _, _, _)

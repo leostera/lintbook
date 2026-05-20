@@ -1,0 +1,1 @@
+node(Node, "string", _, _, _, _), text(Node, Text), notMatchesRegex(Text, "^([fF]|[bB]?[rR]|[rR][bB])"), child(Node, Content, _), node(Content, "string_content", _, _, _, _), child(Content, Escape, _), node(Escape, EscapeKind, _, _, _, _), matchesRegex(EscapeKind, "^\\$")

@@ -1,0 +1,1 @@
+node(Node, "string", _, _, _, _), text(Node, Text), matchesRegex(Text, "^([fF][rR]?|[rR][fF])"), notMatchesRegex(Text, "(^|[^{])\{[^{]")

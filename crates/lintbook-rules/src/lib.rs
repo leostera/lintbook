@@ -544,6 +544,34 @@ const BUILTIN_RULES: &[BuiltinRuleAsset] = &[
         markdown: include_str!("../builtin/python/py009-type-comparison.md"),
         query: include_str!("../builtin/python/py009-type-comparison.df"),
     },
+    BuiltinRuleAsset {
+        name: "lambda-assignment",
+        markdown_path: "builtin/python/py010-lambda-assignment.md",
+        query_path: "builtin/python/py010-lambda-assignment.df",
+        markdown: include_str!("../builtin/python/py010-lambda-assignment.md"),
+        query: include_str!("../builtin/python/py010-lambda-assignment.df"),
+    },
+    BuiltinRuleAsset {
+        name: "invalid-escape-sequence",
+        markdown_path: "builtin/python/py012-invalid-escape-sequence.md",
+        query_path: "builtin/python/py012-invalid-escape-sequence.df",
+        markdown: include_str!("../builtin/python/py012-invalid-escape-sequence.md"),
+        query: include_str!("../builtin/python/py012-invalid-escape-sequence.df"),
+    },
+    BuiltinRuleAsset {
+        name: "f-string-missing-placeholders",
+        markdown_path: "builtin/python/py014-f-string-missing-placeholders.md",
+        query_path: "builtin/python/py014-f-string-missing-placeholders.df",
+        markdown: include_str!("../builtin/python/py014-f-string-missing-placeholders.md"),
+        query: include_str!("../builtin/python/py014-f-string-missing-placeholders.df"),
+    },
+    BuiltinRuleAsset {
+        name: "multi-value-repeated-key-literal",
+        markdown_path: "builtin/python/py015-multi-value-repeated-key-literal.md",
+        query_path: "builtin/python/py015-multi-value-repeated-key-literal.df",
+        markdown: include_str!("../builtin/python/py015-multi-value-repeated-key-literal.md"),
+        query: include_str!("../builtin/python/py015-multi-value-repeated-key-literal.df"),
+    },
 ];
 
 pub const RULE_AUTHORING_GUIDE: &str = r#"lintbook custom rules are Rust-only in this version.
@@ -3065,7 +3093,7 @@ Avoid dbg! in committed code.
     #[test]
     fn compiles_embedded_builtin_rules() {
         let rules = compile_builtin_rules().unwrap();
-        assert_eq!(rules.len(), 74);
+        assert_eq!(rules.len(), 78);
         assert!(rules.iter().any(|rule| {
             rule.id == "RS013"
                 && rule.name == "eq-op"
@@ -3603,6 +3631,62 @@ fn main() {
                     "if isinstance(obj, str):\n    pass\n",
                     "if obj == 'hello':\n    pass\n",
                     "if len(obj) == 5:\n    pass\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "PY010",
+                positives: &[
+                    "add = lambda x, y: x + y\n",
+                    "process = lambda data: data.strip().lower() if data else ''\n",
+                    "func1 = func2 = lambda x: x * 2\n",
+                ],
+                negatives: &[
+                    "def add(x, y):\n    return x + y\n",
+                    "sorted_items = sorted(items, key=lambda x: x.name)\n",
+                    "result = add(1, 2)\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "PY012",
+                positives: &[
+                    "regex = \"\\d+\"\n",
+                    "regex_word = \"\\w+\"\n",
+                    "latex = \"\\alpha \\beta \\gamma\"\n",
+                ],
+                negatives: &[
+                    "regex = r\"\\d+\"\n",
+                    "text = \"Line 1\\nLine 2\\tTabbed\"\n",
+                    "quote = \"He said \\\"Hello\\\"\"\n",
+                    "data = br\"raw\\bytes\"\n",
+                    "greeting = f\"Hello\\{name}\"\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "PY014",
+                positives: &[
+                    "text1 = f\"Hello, World!\"\n",
+                    "text2 = F\"UPPERCASE F\"\n",
+                    "text3 = f\"Use {{braces}} like this\"\n",
+                    "path = fr\"C:\\Users\\name\"\n",
+                ],
+                negatives: &[
+                    "name = 'Alice'\ngreeting = f\"Hello, {name}!\"\n",
+                    "formatted = f\"{value:.2f}\"\n",
+                    "path = fr\"C:\\Users\\{username}\"\n",
+                    "text = \"Hello, World!\"\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "PY015",
+                positives: &[
+                    "data = {\"name\": \"Alice\", \"age\": 30, \"name\": \"Bob\"}\n",
+                    "scores = {1: 'first', 2: 'second', 1: 'again'}\n",
+                    "config = {\"debug\": True, \"verbose\": False, \"debug\": False, \"verbose\": True}\n",
+                ],
+                negatives: &[
+                    "person = {\"name\": \"Alice\", \"age\": 30, \"city\": \"NYC\"}\n",
+                    "data = {\"user\": {\"name\": \"Alice\"}, \"admin\": {\"name\": \"Bob\"}}\n",
+                    "mixed = {\"1\": \"string one\", 1: \"number one\", True: \"boolean\"}\n",
                 ],
             },
         ];

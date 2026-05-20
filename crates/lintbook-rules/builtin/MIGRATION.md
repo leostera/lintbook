@@ -106,3 +106,7 @@ The parked Python crate remains in the tree while rules are converted gradually.
 | PY007 | not-in-test | converted-enabled | Uses `not_operator` over direct or parenthesized `in` comparisons. |
 | PY008 | not-is-test | converted-enabled | Uses `not_operator` over direct or parenthesized `is` comparisons. |
 | PY009 | type-comparison | converted-enabled | Uses comparison operators over `type(...)` call children. |
+| PY010 | lambda-assignment | converted-enabled | Uses assignment right-hand `lambda` field. |
+| PY012 | invalid-escape-sequence | converted-enabled | Uses string-content invalid backslash nodes while skipping raw/f-string prefixes. |
+| PY014 | f-string-missing-placeholders | converted-enabled | Uses f-string prefix and placeholder text matching. |
+| PY015 | multi-value-repeated-key-literal | converted-enabled | Uses dictionary pair key text equality within the same dictionary. |
