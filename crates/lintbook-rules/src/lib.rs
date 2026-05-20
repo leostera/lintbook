@@ -820,7 +820,7 @@ pub fn compile_project(repo_root: &Path) -> Result<CompileReport> {
     let mut compiled = Vec::new();
     let mut skipped_incomplete = Vec::new();
 
-    for source in sources {
+    for mut source in sources {
         if !seen_ids.insert(source.metadata.id.clone()) {
             bail!("Duplicate lintbook rule id `{}`", source.metadata.id);
         }
@@ -830,6 +830,7 @@ pub fn compile_project(repo_root: &Path) -> Result<CompileReport> {
             continue;
         }
 
+        normalize_query_source(&mut source)?;
         let compiled_rule = compile_source(&source)?;
         let output_path = compiled_rule_path(repo_root, &compiled_rule.id);
         expected_outputs.insert(output_path.clone());
@@ -887,6 +888,24 @@ pub fn compile_builtin_rules() -> Result<Vec<CompiledRule>> {
             Ok(rule)
         })
         .collect()
+}
+
+fn normalize_query_source(source: &mut RuleSource) -> Result<()> {
+    let query_source = source
+        .query_source
+        .as_ref()
+        .expect("query source is present");
+    let queries = datafox::parse_queries(query_source)
+        .with_context(|| format!("Failed to parse {}", source.query_path.display()))?;
+    let formatted = format!("{}\n", datafox::format_queries(&queries));
+
+    if formatted != *query_source {
+        fs::write(&source.query_path, &formatted)
+            .with_context(|| format!("Failed to write {}", source.query_path.display()))?;
+        source.query_source = Some(formatted);
+    }
+
+    Ok(())
 }
 
 pub fn load_compiled_rules(repo_root: &Path) -> Result<Vec<CompiledRule>> {
@@ -2748,6 +2767,10 @@ Avoid dbg! in committed code.
         assert!(generated_query_path(temp.path(), &rules.join("no-dbg.md"))
             .unwrap()
             .exists());
+        assert_eq!(
+            fs::read_to_string(gen.join("no-dbg.df")).unwrap(),
+            "node(Node, \"macro_invocation\", _, _, _, _),\n  text(Node, Text),\n  contains(Text, \"dbg!\")\n"
+        );
         assert!(compiled_rule_path(temp.path(), "rust.no-dbg").exists());
     }
 
