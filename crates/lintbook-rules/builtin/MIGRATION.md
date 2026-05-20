@@ -1,6 +1,6 @@
 # Built-In Rule Migration
 
-The old Rust rule crate is parked for reference. Built-ins now live as embedded Markdown intent plus Datafox query assets in this crate.
+The old Rust rule crate has been removed after conversion. Built-ins now live as embedded Markdown intent plus Datafox query assets in this crate.
 
 ## Verification Protocol
 
@@ -15,7 +15,7 @@ For each migrated rule:
 
 ## Rust Rules
 
-All Rust rules from the parked `lintbook-lang-rust` crate have a converted built-in rule asset.
+All Rust rules from the removed `lintbook-lang-rust` crate have a converted built-in rule asset.
 
 Status values:
 

@@ -13,7 +13,6 @@ members = [
 exclude = [
     "crates/lintbook-lang-elixir",
     "crates/lintbook-lang-python",
-    "crates/lintbook-lang-rust",
     "crates/lintbook-lang-sql",
 ]
 resolver = "2"

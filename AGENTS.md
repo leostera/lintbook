@@ -16,7 +16,7 @@ This file provides guidance for coding agents working with this repository.
 - `crates/lintbook-lang` owns grammar detection, parser wiring, and AST dumping.
 - `crates/lintbook-config`, `lintbook-core`, and `lintbook-scanner` provide shared config, result, and file scanning types.
 - `crates/lintbook-mcp` exposes MCP guidance and compile tooling.
-- The old language-specific Rust rule crates remain in the tree but are intentionally not workspace members or runtime dependencies.
+- The old Rust language rule crate has been removed after conversion to built-in Datafox assets; the remaining parked language-specific crates are intentionally not workspace members or runtime dependencies.
 
 ## Key Commands
 

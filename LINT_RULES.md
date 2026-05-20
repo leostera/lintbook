@@ -8,7 +8,7 @@ The active lintbook rule path is Markdown plus Datafox:
 - `lintbook compile --agent codex` asks Codex to generate missing `.lintbook/gen/*.df` files before compiling
 - `lintbook check` runs generated rules without invoking an agent
 
-The previous Rust-implemented language-specific lint crates are parked in the repository for reference and gradual conversion. They are intentionally excluded from the workspace and are not run by `lintbook check`.
+The previous Rust-implemented Rust lint crate has been removed after conversion to built-in Datafox assets. Other language-specific lint crates remain parked in the repository for reference and gradual conversion; they are intentionally excluded from the workspace and are not run by `lintbook check`.
 
 Built-in rules are now embedded as Markdown intent plus Datafox assets under `crates/lintbook-rules/builtin`. They are compiled in memory from the embedded assets at runtime and can be listed with `lintbook lints`.
 
