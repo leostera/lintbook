@@ -16,7 +16,7 @@ use std::sync::Arc;
 use tree_sitter::{Node, Parser};
 
 const SCHEMA_VERSION: u32 = 2;
-const FACT_SCHEMA_VERSION: u32 = 12;
+const FACT_SCHEMA_VERSION: u32 = 13;
 const BINCODE_CACHE_FORMAT_VERSION: u32 = 2;
 const LINTBOOK_DIR: &str = ".lintbook";
 const RULES_DIR: &str = "rules";
@@ -720,6 +720,34 @@ const BUILTIN_RULES: &[BuiltinRuleAsset] = &[
         query: include_str!("../builtin/elixir/ex1002-line-endings.df"),
     },
     BuiltinRuleAsset {
+        name: "exception-names",
+        markdown_path: "builtin/elixir/ex1001-exception-names.md",
+        query_path: "builtin/elixir/ex1001-exception-names.df",
+        markdown: include_str!("../builtin/elixir/ex1001-exception-names.md"),
+        query: include_str!("../builtin/elixir/ex1001-exception-names.df"),
+    },
+    BuiltinRuleAsset {
+        name: "multi_alias_import_require_use",
+        markdown_path: "builtin/elixir/ex1003-multi-alias-import-require-use.md",
+        query_path: "builtin/elixir/ex1003-multi-alias-import-require-use.df",
+        markdown: include_str!("../builtin/elixir/ex1003-multi-alias-import-require-use.md"),
+        query: include_str!("../builtin/elixir/ex1003-multi-alias-import-require-use.df"),
+    },
+    BuiltinRuleAsset {
+        name: "space_around_operators",
+        markdown_path: "builtin/elixir/ex1005-space-around-operators.md",
+        query_path: "builtin/elixir/ex1005-space-around-operators.df",
+        markdown: include_str!("../builtin/elixir/ex1005-space-around-operators.md"),
+        query: include_str!("../builtin/elixir/ex1005-space-around-operators.df"),
+    },
+    BuiltinRuleAsset {
+        name: "space_in_parentheses",
+        markdown_path: "builtin/elixir/ex1006-space-in-parentheses.md",
+        query_path: "builtin/elixir/ex1006-space-in-parentheses.df",
+        markdown: include_str!("../builtin/elixir/ex1006-space-in-parentheses.md"),
+        query: include_str!("../builtin/elixir/ex1006-space-in-parentheses.df"),
+    },
+    BuiltinRuleAsset {
         name: "tabs_or_spaces",
         markdown_path: "builtin/elixir/ex1007-tabs-or-spaces.md",
         query_path: "builtin/elixir/ex1007-tabs-or-spaces.df",
@@ -727,11 +755,25 @@ const BUILTIN_RULES: &[BuiltinRuleAsset] = &[
         query: include_str!("../builtin/elixir/ex1007-tabs-or-spaces.df"),
     },
     BuiltinRuleAsset {
+        name: "unused_variable_names",
+        markdown_path: "builtin/elixir/ex1008-unused-variable-names.md",
+        query_path: "builtin/elixir/ex1008-unused-variable-names.df",
+        markdown: include_str!("../builtin/elixir/ex1008-unused-variable-names.md"),
+        query: include_str!("../builtin/elixir/ex1008-unused-variable-names.df"),
+    },
+    BuiltinRuleAsset {
         name: "iex-pry",
         markdown_path: "builtin/elixir/ex3001-iex-pry.md",
         query_path: "builtin/elixir/ex3001-iex-pry.df",
         markdown: include_str!("../builtin/elixir/ex3001-iex-pry.md"),
         query: include_str!("../builtin/elixir/ex3001-iex-pry.df"),
+    },
+    BuiltinRuleAsset {
+        name: "variable-names",
+        markdown_path: "builtin/elixir/ex3003-variable-names.md",
+        query_path: "builtin/elixir/ex3003-variable-names.df",
+        markdown: include_str!("../builtin/elixir/ex3003-variable-names.md"),
+        query: include_str!("../builtin/elixir/ex3003-variable-names.df"),
     },
     BuiltinRuleAsset {
         name: "io-inspect",
@@ -859,6 +901,7 @@ Available Rust facts:
 - previousLine(NextLine, Line)
 - lineEnding(Line, Style)
 - lineIndent(Line, Style)
+- elixirNamespaceStatement(Node, Type, Base, Name)
 - pythonOutsideLoop(Node)
 - pythonOutsideFunction(Node)
 - pythonInsideFinally(Node)
@@ -894,6 +937,7 @@ Fact semantics:
 - `nextLine` and `previousLine` are direct adjacent source-line relationships.
 - `lineEnding` stores `lf` or `crlf` for lines with an explicit line ending.
 - `lineIndent` stores `tabs`, `spaces`, or `mixed` for lines with leading indentation.
+- `elixirNamespaceStatement` exposes `alias`, `import`, `require`, and `use` module references split into base and leaf names.
 - Python helper facts expose reusable context, import binding, and `__future__` import ordering checks for Python rules.
 
 Example rules:
@@ -1995,6 +2039,7 @@ fn all_fact_predicates() -> BTreeSet<String> {
         "previousLine",
         "lineEnding",
         "lineIndent",
+        "elixirNamespaceStatement",
         "pythonOutsideLoop",
         "pythonOutsideFunction",
         "pythonInsideFinally",
@@ -2777,6 +2822,38 @@ impl<'a> FactBuilder<'a> {
         if self.wants("pythonLateFutureImport") && kind == "module" {
             self.insert_python_late_future_import_facts(child_infos);
         }
+
+        if self.wants("elixirNamespaceStatement") && kind == "call" {
+            self.insert_elixir_namespace_statement(id, text, child_infos);
+        }
+    }
+
+    fn insert_elixir_namespace_statement(
+        &mut self,
+        id: i64,
+        text: &str,
+        child_infos: &[ChildFactInfo],
+    ) {
+        let Some(statement_type) = child_infos
+            .first()
+            .map(|child| child.text.as_str())
+            .filter(|name| matches!(*name, "alias" | "import" | "require" | "use"))
+        else {
+            return;
+        };
+        let Some((base, name)) = parse_elixir_namespace_statement(statement_type, text) else {
+            return;
+        };
+
+        self.insert(
+            "elixirNamespaceStatement",
+            vec![
+                Value::integer(id),
+                Value::string(statement_type),
+                Value::string(base),
+                Value::string(name),
+            ],
+        );
     }
 
     fn insert_python_late_future_import_facts(&mut self, child_infos: &[ChildFactInfo]) {
@@ -3091,6 +3168,35 @@ fn looks_like_python_module_docstring(index: usize, child: &ChildFactInfo) -> bo
     ]
     .iter()
     .any(|prefix| text.starts_with(prefix))
+}
+
+fn parse_elixir_namespace_statement(statement_type: &str, text: &str) -> Option<(String, String)> {
+    let rest = text.trim().strip_prefix(statement_type)?.trim_start();
+    let module = rest
+        .split([',', '\n'])
+        .next()?
+        .trim()
+        .trim_start_matches('(')
+        .trim_end_matches(')');
+
+    if module.contains(".{") {
+        return None;
+    }
+
+    let dot_pos = module.find('.')?;
+    let base = module[..dot_pos].trim();
+    let name = module.rsplit('.').next()?.trim();
+    if base.is_empty() || name.is_empty() || !base.chars().all(is_elixir_module_path_char) {
+        return None;
+    }
+    if !name.chars().all(is_elixir_module_path_char) {
+        return None;
+    }
+    Some((base.to_string(), name.to_string()))
+}
+
+fn is_elixir_module_path_char(ch: char) -> bool {
+    ch.is_ascii_alphanumeric() || ch == '_' || ch == '.'
 }
 
 fn is_comparison_operator(operator: &str) -> bool {
@@ -3696,7 +3802,7 @@ Avoid dbg! in committed code.
     #[test]
     fn compiles_embedded_builtin_rules() {
         let rules = compile_builtin_rules().unwrap();
-        assert_eq!(rules.len(), 109);
+        assert_eq!(rules.len(), 115);
         assert!(rules.iter().any(|rule| {
             rule.id == "RS013"
                 && rule.name == "eq-op"
@@ -4559,6 +4665,49 @@ fn main() {
                 ],
             },
             BuiltinRuleFixture {
+                rule_id: "EX1001",
+                positives: &[
+                    "defmodule MyApp.BadThing do\n  defexception [:message]\nend\n",
+                    "defmodule WeirdProblem do\n  defexception [:message]\nend\n",
+                ],
+                negatives: &[
+                    "defmodule MyApp.PaymentError do\n  defexception [:message]\nend\n",
+                    "defmodule InvalidToken do\n  defexception [:message]\nend\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "EX1003",
+                positives: &[
+                    "defmodule Example do\n  alias MyApp.User\n  alias MyApp.Post\nend\n",
+                    "defmodule Example do\n  import Ecto.Query\n  import Ecto.Changeset\nend\n",
+                ],
+                negatives: &[
+                    "defmodule Example do\n  alias MyApp.{User, Post}\nend\n",
+                    "defmodule Example do\n  alias MyApp.User\n  alias OtherApp.Post\nend\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "EX1005",
+                positives: &[
+                    "defmodule Example do\n  def test do\n    x = a+b\n    y = c*d\n  end\nend\n",
+                    "defmodule Example do\n  def test do\n    z=e == f\n  end\nend\n",
+                ],
+                negatives: &[
+                    "defmodule Example do\n  def test do\n    x = a + b\n    y = c * d\n  end\nend\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "EX1006",
+                positives: &[
+                    "defmodule Example do\n  def test do\n    third( e, f)\n  end\nend\n",
+                    "defmodule Example do\n  def test do\n    list = [1, 2, 3 ]\n  end\nend\n",
+                ],
+                negatives: &[
+                    "defmodule Example do\n  def test do\n    func(a, b)\n    other(c, d)\n  end\nend\n",
+                    "defmodule Example do\n  def test do\n    func( a, b )\n    other( c, d )\n  end\nend\n",
+                ],
+            },
+            BuiltinRuleFixture {
                 rule_id: "EX1007",
                 positives: &[
                     "defmodule Example do\n\t  def mixed do\n    :ok\n  end\nend\n",
@@ -4567,6 +4716,16 @@ fn main() {
                 negatives: &[
                     "defmodule Example do\n  def spaces do\n    :ok\n  end\nend\n",
                     "defmodule Example do\n\tdef tabs do\n\t\t:ok\n\tend\nend\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "EX1008",
+                positives: &[
+                    "defmodule Example do\n  def test(_user, data) do\n    _ = data\n    _config = load_config()\n    data\n  end\nend\n",
+                ],
+                negatives: &[
+                    "defmodule Example do\n  def test(_, data) do\n    _ = data\n    data\n  end\nend\n",
+                    "defmodule Example do\n  def test(_user, data) do\n    _config = load_config()\n    data\n  end\nend\n",
                 ],
             },
             BuiltinRuleFixture {
@@ -4589,6 +4748,16 @@ fn main() {
                 negatives: &[
                     "defmodule Clean do\n  require Logger\n  def run(value) do\n    Logger.info(\"value: #{inspect(value)}\")\n  end\nend\n",
                     "defmodule Clean do\n  def run(value) do\n    Kernel.inspect(value)\n  end\nend\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "EX3003",
+                positives: &[
+                    "defmodule Example do\n  def process_data(userId) do\n    responseData = userId\n    responseData\n  end\nend\n",
+                ],
+                negatives: &[
+                    "defmodule Example do\n  def process_data(user_id) do\n    response_data = user_id\n    response_data\n  end\nend\n",
+                    "defmodule Example do\n  def unused_params(_userId) do\n    :ok\n  end\nend\n",
                 ],
             },
             BuiltinRuleFixture {

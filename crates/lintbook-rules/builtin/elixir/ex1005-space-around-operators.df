@@ -1,0 +1,3 @@
+node(Node, "binary_operator", _, _, _, _), text(Node, Text), matchesRegex(Text, "[A-Za-z0-9_][+*/=<>|&-]+[A-Za-z0-9_]");
+node(Node, "binary_operator", _, _, _, _), text(Node, Text), matchesRegex(Text, "[A-Za-z0-9_][+*/=<>|&-]+[[:blank:]]");
+node(Node, "binary_operator", _, _, _, _), text(Node, Text), matchesRegex(Text, "[[:blank:]][+*/=<>|&-]+[A-Za-z0-9_]")

@@ -1,0 +1,6 @@
+line(Node, _, Text, _, _), matchesRegex(Text, "\(\s+[^)]*[^\s]\)");
+line(Node, _, Text, _, _), matchesRegex(Text, "\([^\s)][^)]*\s+\)");
+line(Node, _, Text, _, _), matchesRegex(Text, "\[\s+[^]]*[^\s]\]");
+line(Node, _, Text, _, _), matchesRegex(Text, "\[[^\s\]][^]]*\s+\]");
+line(Node, _, Text, _, _), matchesRegex(Text, "\{\s+[^}]*[^\s]\}");
+line(Node, _, Text, _, _), matchesRegex(Text, "\{[^\s}][^}]*\s+\}")

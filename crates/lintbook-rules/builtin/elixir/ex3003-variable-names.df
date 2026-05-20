@@ -1,0 +1,2 @@
+node(Node, "identifier", _, _, _, _), text(Node, Name), notStartsWith(Name, "_"), matchesRegex(Name, "[A-Z]");
+node(Node, "identifier", _, _, _, _), text(Node, Name), notStartsWith(Name, "_"), matchesRegex(Name, "__|_$")

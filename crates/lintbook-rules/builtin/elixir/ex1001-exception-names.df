@@ -1,0 +1,1 @@
+node(Node, "call", _, _, _, _), child(Node, Defmodule, 0), text(Defmodule, "defmodule"), child(Node, ModuleName, 1), text(ModuleName, ModuleText), text(Node, Body), contains(Body, "defexception"), notMatchesRegex(ModuleText, "(Error|Exception|Failure)$"), notMatchesRegex(ModuleText, "(^|\\.)(Invalid|Bad|Illegal|Missing|Malformed)[A-Za-z0-9_]*$")

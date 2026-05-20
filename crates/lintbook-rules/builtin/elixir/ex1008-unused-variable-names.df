@@ -1,0 +1,2 @@
+node(Node, "identifier", _, _, _, _), text(Node, "_"), node(Other, "identifier", _, _, _, _), text(Other, OtherName), startsWith(OtherName, "_"), notMatchesRegex(OtherName, "^_$");
+node(Node, "identifier", _, _, _, _), text(Node, Name), startsWith(Name, "_"), notMatchesRegex(Name, "^_$"), node(Other, "identifier", _, _, _, _), text(Other, "_")

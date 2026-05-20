@@ -1,0 +1,1 @@
+elixirNamespaceStatement(Node, Type, Base, _), elixirNamespaceStatement(Other, Type, Base, _), Node < Other

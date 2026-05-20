@@ -137,10 +137,16 @@ The parked Elixir crate remains in the tree while rules are converted gradually.
 
 | Rule | Name | Status | Notes |
 | --- | --- | --- | --- |
+| EX1001 | exception-names | converted-enabled | Uses exception module text patterns. |
 | EX1002 | line-endings | converted-enabled | Uses reusable line-ending style facts. |
+| EX1003 | multi_alias_import_require_use | converted-enabled | Uses reusable namespace statement facts. |
+| EX1005 | space_around_operators | converted-enabled | Uses binary operator source text patterns. |
+| EX1006 | space_in_parentheses | converted-enabled | Uses line text bracket spacing patterns. |
 | EX1007 | tabs_or_spaces | converted-enabled | Uses reusable line indentation facts. |
+| EX1008 | unused_variable_names | converted-enabled | Uses identifier self-joins over underscore names. |
 | EX3001 | iex-pry | converted-enabled | Uses call function text matching. |
 | EX3002 | io-inspect | converted-enabled | Uses call function text plus import detection. |
+| EX3003 | variable-names | converted-enabled | Uses identifier text patterns. |
 | EX3010 | trailing-whitespace | converted-enabled | Uses synthetic line facts. |
 | EX3011 | semicolons | converted-enabled | Uses tree-sitter semicolon token facts. |
 | EX4001 | unsafe-to-atom | converted-enabled | Uses call function text matching. |
