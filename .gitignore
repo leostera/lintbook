@@ -2,3 +2,5 @@ target
 .lintbook/cache/
 .codex/
 .agents/profiles/
+fuzz/artifacts/
+fuzz/coverage/

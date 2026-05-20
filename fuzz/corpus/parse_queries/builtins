@@ -1,0 +1,1 @@
+displayName(Node, Name), contains(Name, "dbg"), notStartsWith(Name, "test"), Name = "debug"

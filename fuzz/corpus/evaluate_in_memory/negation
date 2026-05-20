@@ -1,0 +1,1 @@
+text(Node, Text), !ignored(Node), contains(Text, "dbg")

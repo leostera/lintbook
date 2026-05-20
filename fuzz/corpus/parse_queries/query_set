@@ -1,0 +1,1 @@
+node(Node, "call"); edge(From, To); 'local://schema/name'(Entity, Value)

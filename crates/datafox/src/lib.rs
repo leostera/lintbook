@@ -1,6 +1,29 @@
-//! Datafox is a standalone Datalog parser and streaming query engine.
+#![forbid(unsafe_code)]
+//! Datafox is a standalone Datalog parser and streaming query engine for facts.
 //!
-//! Stage 0 / Stage 1 public API:
+//! The crate is intentionally small: callers provide facts through [`Storage`],
+//! parse read-only queries with [`parse_query`] or [`parse_queries`], and evaluate
+//! them with [`Evaluator`].
+//!
+//! ```
+//! use datafox::{Evaluator, InMemoryStorage, Value, parse_query};
+//!
+//! let storage = InMemoryStorage::from_facts([(
+//!     "edge".to_string(),
+//!     vec![
+//!         vec![Value::integer(1), Value::integer(2)],
+//!         vec![Value::integer(2), Value::integer(3)],
+//!     ],
+//! )]);
+//! let query = parse_query("edge(From, 2)")?;
+//! let results = Evaluator::evaluate_in_memory(&storage, &query)?;
+//!
+//! assert_eq!(results.len(), 1);
+//! assert_eq!(results[0].lookup("From"), Some(&Value::integer(1)));
+//! # Ok::<(), datafox::Error>(())
+//! ```
+//!
+//! Public API:
 //! - [`Value`] for Datalog constants.
 //! - [`Term`] for variables, constants, and wildcards.
 //! - [`Atom`], [`Clause`], and [`Query`] for query syntax trees.

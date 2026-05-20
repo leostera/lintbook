@@ -2,14 +2,23 @@
 name = "datafox"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.85"
+description = "A small Datalog parser and streaming query engine for querying facts."
+license = "BSD-3-Clause"
+repository = "https://github.com/leostera/treelint"
+readme = "README.md"
+keywords = ["datalog", "query", "facts", "logic", "rules"]
+categories = ["data-structures", "parser-implementations"]
+include = ["Cargo.toml", "README.md", "src/**/*.rs", "examples/**/*.rs"]
 
 [dependencies]
 async-trait.workspace = true
 regex.workspace = true
 serde.workspace = true
 thiserror.workspace = true
-tokio.workspace = true
+tokio = { version = "1.0", features = ["rt", "sync"] }
 tracing.workspace = true
 
 [dev-dependencies]
 proptest.workspace = true
+tokio = { version = "1.0", features = ["macros", "rt", "rt-multi-thread"] }

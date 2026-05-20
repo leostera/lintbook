@@ -567,6 +567,8 @@ fn is_named_builtin(name: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use proptest::prelude::*;
+
     use crate::{
         Atom, Clause, Diagnostic, Error, Query, Span, Term, Value, parse_queries, parse_query,
     };
@@ -949,6 +951,18 @@ mod tests {
                 assert_eq!(diagnostics[0].message, "unterminated quoted identifier");
             }
             other => panic!("unexpected error: {other:?}"),
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn parse_query_never_panics_on_arbitrary_utf8(source in "\\PC{0,512}") {
+            let _ = parse_query(&source);
+        }
+
+        #[test]
+        fn parse_query_sets_never_panic_on_arbitrary_utf8(source in "\\PC{0,512}") {
+            let _ = parse_queries(&source);
         }
     }
 }

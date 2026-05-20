@@ -73,9 +73,14 @@ impl Unifier {
 
         let mut current = substitution.clone();
         for (term, value) in atom.args.iter().zip(tuple) {
-            match Self::unify_terms(&current, term, &Term::constant(value.clone())) {
-                Some(next) => current = next,
-                None => return Ok(None),
+            match term {
+                Term::Const(expected) if expected != value => return Ok(None),
+                Term::Const(_) | Term::Wildcard => {}
+                Term::Var(variable) => match current.lookup(variable) {
+                    Some(existing) if existing != value => return Ok(None),
+                    Some(_) => {}
+                    None => current = current.bind(variable.clone(), value.clone()),
+                },
             }
         }
 
@@ -83,9 +88,10 @@ impl Unifier {
     }
 
     pub fn ground_term(substitution: &Substitution, term: &Term) -> Option<Value> {
-        match substitution.apply_to_term(term) {
-            Term::Const(value) => Some(value),
-            Term::Var(_) | Term::Wildcard => None,
+        match term {
+            Term::Const(value) => Some(value.clone()),
+            Term::Var(variable) => substitution.lookup(variable).cloned(),
+            Term::Wildcard => None,
         }
     }
 

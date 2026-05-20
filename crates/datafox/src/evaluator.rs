@@ -278,7 +278,7 @@ impl Evaluator {
     where
         S: Storage + Clone + Send + Sync + 'static,
     {
-        let pattern = atom_to_pattern(&seed.apply_to_atom(atom));
+        let pattern = atom_to_pattern(atom, seed);
         let mut tuples = universe
             .get_facts_matching(&atom.predicate, pattern)
             .await?;
@@ -303,7 +303,7 @@ impl Evaluator {
         atom: &Atom,
         seed: &Substitution,
     ) -> Result<Vec<Substitution>> {
-        let pattern = atom_to_pattern(&seed.apply_to_atom(atom));
+        let pattern = atom_to_pattern(atom, seed);
         let mut substitutions = Vec::new();
 
         for tuple in storage.facts_matching(&atom.predicate, &pattern) {
@@ -316,12 +316,13 @@ impl Evaluator {
     }
 }
 
-fn atom_to_pattern(atom: &Atom) -> Vec<Option<Value>> {
+fn atom_to_pattern(atom: &Atom, seed: &Substitution) -> Vec<Option<Value>> {
     atom.args
         .iter()
         .map(|term| match term {
             crate::Term::Const(value) => Some(value.clone()),
-            crate::Term::Var(_) | crate::Term::Wildcard => None,
+            crate::Term::Var(variable) => seed.lookup(variable).cloned(),
+            crate::Term::Wildcard => None,
         })
         .collect()
 }
@@ -364,6 +365,8 @@ fn regex_is_match(
 
 #[cfg(test)]
 mod tests {
+    use proptest::prelude::*;
+
     use crate::{Clause, Evaluator, InMemoryStorage, Query, Result, Universe, Value, parse_query};
 
     async fn collect_results(
@@ -707,5 +710,41 @@ mod tests {
             }
         );
         Ok(())
+    }
+
+    proptest! {
+        #[test]
+        fn evaluator_never_panics_on_parser_output(source in "[A-Za-z0-9_():,;!<>=\\\"' ?.-]{0,256}") {
+            if let Ok(queries) = crate::parse_queries(&source) {
+                let storage = InMemoryStorage::from_facts([
+                    (
+                        "edge".to_string(),
+                        vec![
+                            vec![Value::integer(1), Value::integer(2)],
+                            vec![Value::integer(2), Value::integer(3)],
+                            vec![Value::integer(3), Value::integer(3)],
+                        ],
+                    ),
+                    (
+                        "displayName".to_string(),
+                        vec![
+                            vec![Value::string("rush"), Value::string("Rush")],
+                            vec![Value::string("yes"), Value::string("Yes")],
+                        ],
+                    ),
+                    (
+                        "text".to_string(),
+                        vec![
+                            vec![Value::string("node-1"), Value::string("dbg!")],
+                            vec![Value::string("node-2"), Value::string("println!")],
+                        ],
+                    ),
+                ]);
+
+                for query in queries.into_iter().take(16) {
+                    let _ = Evaluator::evaluate_in_memory(&storage, &query);
+                }
+            }
+        }
     }
 }
