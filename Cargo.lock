@@ -1005,6 +1005,7 @@ name = "lintbook-scanner"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "globset",
  "ignore",
  "lintbook-config",
  "lintbook-core",

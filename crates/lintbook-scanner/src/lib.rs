@@ -1,9 +1,11 @@
 use anyhow::Result;
+use globset::{Glob, GlobSet};
 use ignore::WalkBuilder;
 use lintbook_core::*;
 use lintbook_lang::*;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 
 pub struct Scanner;
 
@@ -81,6 +83,111 @@ impl Scanner {
         Ok(results)
     }
 
+    pub fn scan_and_lint_targets(
+        repo_root: &Path,
+        current_dir: &Path,
+        targets: &[String],
+        config: &lintbook_config::LintbookConfig,
+        active_rule_languages: &HashSet<String>,
+    ) -> Result<Vec<LintResult<Grammar>>> {
+        let results = Arc::new(Mutex::new(Vec::new()));
+        let results_for_handler = Arc::clone(&results);
+        Self::scan_and_lint_targets_with(
+            repo_root,
+            current_dir,
+            targets,
+            config,
+            active_rule_languages,
+            move |result| {
+                results_for_handler.lock().unwrap().push(result);
+                Ok(())
+            },
+        )?;
+
+        let results = Arc::try_unwrap(results)
+            .unwrap_or_else(|_| panic!("Failed to unwrap results"))
+            .into_inner()
+            .unwrap();
+
+        Ok(results)
+    }
+
+    pub fn scan_and_lint_targets_with<F>(
+        repo_root: &Path,
+        current_dir: &Path,
+        targets: &[String],
+        config: &lintbook_config::LintbookConfig,
+        active_rule_languages: &HashSet<String>,
+        handler: F,
+    ) -> Result<()>
+    where
+        F: Fn(LintResult<Grammar>) -> Result<()> + Send + Sync + 'static,
+    {
+        let handler = Arc::new(handler);
+        let seen = Arc::new(Mutex::new(HashSet::new()));
+        let mut directory_roots = Vec::new();
+        let mut glob_roots = Vec::new();
+        let mut glob_builder = globset::GlobSetBuilder::new();
+        let mut has_globs = false;
+
+        for target in targets {
+            if contains_glob_meta(target) {
+                let pattern = resolve_target_pattern(current_dir, target);
+                glob_builder.add(Glob::new(&pattern)?);
+                glob_roots.push(glob_walk_root(current_dir, target));
+                has_globs = true;
+                continue;
+            }
+
+            let path = resolve_target_path(current_dir, target);
+            if !path.exists() {
+                anyhow::bail!("Check target not found: {}", target);
+            }
+            if path.is_dir() {
+                directory_roots.push(path);
+                continue;
+            }
+
+            let normalized = normalize_seen_path(&path);
+            if !seen.lock().unwrap().insert(normalized) {
+                continue;
+            }
+            if let Some(result) = Self::lint_file(&path, config, active_rule_languages)? {
+                handler(result)?;
+            }
+        }
+
+        if directory_roots.is_empty() && glob_roots.is_empty() {
+            return Ok(());
+        }
+
+        if !directory_roots.is_empty() {
+            Self::scan_roots_and_lint_files_with(
+                repo_root,
+                &directory_roots,
+                None,
+                Some(Arc::clone(&seen)),
+                config,
+                active_rule_languages,
+                Arc::clone(&handler),
+            )?;
+        }
+
+        if has_globs {
+            Self::scan_roots_and_lint_files_with(
+                repo_root,
+                &glob_roots,
+                Some(Arc::new(glob_builder.build()?)),
+                Some(seen),
+                config,
+                active_rule_languages,
+                handler,
+            )?;
+        }
+
+        Ok(())
+    }
+
     pub fn scan_and_lint_files_with<F>(
         repo_root: &Path,
         config: &lintbook_config::LintbookConfig,
@@ -90,8 +197,69 @@ impl Scanner {
     where
         F: Fn(LintResult<Grammar>) -> Result<()> + Send + Sync + 'static,
     {
-        use std::sync::{Arc, Mutex};
+        Self::scan_roots_and_lint_files_with(
+            repo_root,
+            &[repo_root.to_path_buf()],
+            None,
+            None,
+            config,
+            active_rule_languages,
+            Arc::new(handler),
+        )
+    }
 
+    pub fn lint_file(
+        path: &Path,
+        config: &lintbook_config::LintbookConfig,
+        active_rule_languages: &HashSet<String>,
+    ) -> Result<Option<LintResult<Grammar>>> {
+        let Some(extension) = path.extension().and_then(|ext| ext.to_str()) else {
+            return Ok(None);
+        };
+        let Some(grammar) = lintbook_lang::get_grammar_for_extension(extension) else {
+            return Ok(None);
+        };
+        if !config
+            .lintbook
+            .languages
+            .contains(&grammar.name().to_string())
+            || (!active_rule_languages.contains(grammar.name()) && grammar.lints().is_empty())
+        {
+            return Ok(None);
+        }
+
+        let start_time = std::time::Instant::now();
+        if grammar.lints().is_empty() {
+            return Ok(Some(LintResult {
+                file_path: path.to_path_buf(),
+                duration: start_time.elapsed(),
+                status: LintStatus::Ok,
+                violations: vec![],
+                language: Some(grammar),
+            }));
+        }
+
+        let source = match std::fs::read_to_string(path) {
+            Ok(source) => source,
+            Err(_) => return Ok(None),
+        };
+        Ok(Some(lintbook_lang::parse(
+            config, path, &source, grammar, start_time,
+        )))
+    }
+
+    fn scan_roots_and_lint_files_with<F>(
+        repo_root: &Path,
+        roots: &[PathBuf],
+        include_globs: Option<Arc<GlobSet>>,
+        seen: Option<Arc<Mutex<HashSet<PathBuf>>>>,
+        config: &lintbook_config::LintbookConfig,
+        active_rule_languages: &HashSet<String>,
+        handler: Arc<F>,
+    ) -> Result<()>
+    where
+        F: Fn(LintResult<Grammar>) -> Result<()> + Send + Sync + 'static,
+    {
         // Collect enabled extensions for quick filtering
         let enabled_extensions: HashSet<String> = config
             .lintbook
@@ -108,105 +276,99 @@ impl Scanner {
             .flat_map(|g| g.extensions().iter().map(|e| e.to_string()))
             .collect();
 
-        // Build walker with minimal features for performance
-        let mut walker = WalkBuilder::new(repo_root);
-        walker
-            .hidden(false) // Don't skip hidden files by default
-            .ignore(true) // Honor .ignore files
-            .git_ignore(true) // Honor .gitignore files
-            .git_global(false) // Skip global gitignore for performance
-            .git_exclude(false) // Skip .git/info/exclude for performance
-            .threads(num_cpus::get()); // Use all available CPU cores
-
-        // Only add custom ignore patterns if needed
-        if !config.lintbook.ignore.is_empty() {
-            let mut overrides = ignore::overrides::OverrideBuilder::new(repo_root);
-            for pattern in &config.lintbook.ignore {
-                // Add patterns as globs to exclude (! prefix means exclude)
-                overrides.add(&format!("!{}", pattern))?;
-            }
-            walker.overrides(overrides.build()?);
-        }
-
-        // Add file type filters to reduce the number of files we need to check
-        if !enabled_extensions.is_empty() {
-            let mut types_builder = ignore::types::TypesBuilder::new();
-            for ext in &enabled_extensions {
-                types_builder.add("lintbook", &format!("*.{}", ext))?;
-            }
-            types_builder.select("lintbook");
-            walker.types(types_builder.build()?);
-        }
-
-        let handler = Arc::new(handler);
         let callback_error = Arc::new(Mutex::new(None));
 
-        // Run the parallel walker
-        walker.build_parallel().run(|| {
-            let config = config.clone();
-            let handler = Arc::clone(&handler);
-            let callback_error = Arc::clone(&callback_error);
+        for root in roots {
+            let mut walker = WalkBuilder::new(root);
+            walker
+                .hidden(false) // Don't skip hidden files by default
+                .ignore(true) // Honor .ignore files
+                .git_ignore(true) // Honor .gitignore files
+                .git_global(false) // Skip global gitignore for performance
+                .git_exclude(false) // Skip .git/info/exclude for performance
+                .threads(num_cpus::get()); // Use all available CPU cores
 
-            Box::new(move |entry| {
-                if callback_error.lock().unwrap().is_some() {
-                    return ignore::WalkState::Quit;
+            // Only add custom ignore patterns if needed
+            if !config.lintbook.ignore.is_empty() {
+                let mut overrides = ignore::overrides::OverrideBuilder::new(repo_root);
+                for pattern in &config.lintbook.ignore {
+                    // Add patterns as globs to exclude (! prefix means exclude)
+                    overrides.add(&format!("!{}", pattern))?;
                 }
+                walker.overrides(overrides.build()?);
+            }
 
-                let entry = match entry {
-                    Ok(e) => e,
-                    Err(_) => return ignore::WalkState::Continue,
-                };
-
-                let path = entry.path();
-
-                // Skip directories
-                if path.is_dir() {
-                    return ignore::WalkState::Continue;
+            // Add file type filters to reduce the number of files we need to check
+            if !enabled_extensions.is_empty() {
+                let mut types_builder = ignore::types::TypesBuilder::new();
+                for ext in &enabled_extensions {
+                    types_builder.add("lintbook", &format!("*.{}", ext))?;
                 }
+                types_builder.select("lintbook");
+                walker.types(types_builder.build()?);
+            }
 
-                // Check file extension
-                if let Some(extension) = path.extension() {
-                    let ext = extension.to_string_lossy();
+            // Run the parallel walker
+            walker.build_parallel().run(|| {
+                let config = config.clone();
+                let active_rule_languages = active_rule_languages.clone();
+                let handler = Arc::clone(&handler);
+                let callback_error = Arc::clone(&callback_error);
+                let include_globs = include_globs.clone();
+                let seen = seen.clone();
 
-                    // Check if we support this language
-                    if let Some(grammar) = lintbook_lang::get_grammar_for_extension(&ext) {
-                        // Check if this language is enabled in config
-                        if config
-                            .lintbook
-                            .languages
-                            .contains(&grammar.name().to_string())
-                            && (active_rule_languages.contains(grammar.name())
-                                || !grammar.lints().is_empty())
-                        {
-                            let start_time = std::time::Instant::now();
+                Box::new(move |entry| {
+                    if callback_error.lock().unwrap().is_some() {
+                        return ignore::WalkState::Quit;
+                    }
 
-                            let result = if grammar.lints().is_empty() {
-                                LintResult {
-                                    file_path: path.to_path_buf(),
-                                    duration: start_time.elapsed(),
-                                    status: LintStatus::Ok,
-                                    violations: vec![],
-                                    language: Some(grammar),
-                                }
-                            } else {
-                                let source = match std::fs::read_to_string(path) {
-                                    Ok(source) => source,
-                                    Err(_) => return ignore::WalkState::Continue,
-                                };
-                                lintbook_lang::parse(&config, path, &source, grammar, start_time)
-                            };
+                    let entry = match entry {
+                        Ok(e) => e,
+                        Err(_) => return ignore::WalkState::Continue,
+                    };
 
-                            if let Err(error) = handler(result) {
-                                *callback_error.lock().unwrap() = Some(error);
-                                return ignore::WalkState::Quit;
-                            };
+                    let path = entry.path();
+
+                    // Skip directories
+                    if path.is_dir() {
+                        return ignore::WalkState::Continue;
+                    }
+
+                    if let Some(include_globs) = &include_globs {
+                        if !include_globs.is_match(path) {
+                            return ignore::WalkState::Continue;
                         }
                     }
-                }
 
-                ignore::WalkState::Continue
-            })
-        });
+                    if let Some(seen) = &seen {
+                        let normalized = normalize_seen_path(path);
+                        if !seen.lock().unwrap().insert(normalized) {
+                            return ignore::WalkState::Continue;
+                        }
+                    }
+
+                    let result = match Self::lint_file(path, &config, &active_rule_languages) {
+                        Ok(Some(result)) => result,
+                        Ok(None) => return ignore::WalkState::Continue,
+                        Err(error) => {
+                            *callback_error.lock().unwrap() = Some(error);
+                            return ignore::WalkState::Quit;
+                        }
+                    };
+
+                    if let Err(error) = handler(result) {
+                        *callback_error.lock().unwrap() = Some(error);
+                        return ignore::WalkState::Quit;
+                    };
+
+                    ignore::WalkState::Continue
+                })
+            });
+
+            if callback_error.lock().unwrap().is_some() {
+                break;
+            }
+        }
 
         if let Some(error) = Arc::try_unwrap(callback_error)
             .unwrap_or_else(|_| panic!("Failed to unwrap callback error"))
@@ -218,6 +380,66 @@ impl Scanner {
 
         Ok(())
     }
+}
+
+fn resolve_target_path(current_dir: &Path, target: &str) -> PathBuf {
+    let path = Path::new(target);
+    if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        current_dir.join(path)
+    }
+}
+
+fn resolve_target_pattern(current_dir: &Path, target: &str) -> String {
+    resolve_target_path(current_dir, target)
+        .to_string_lossy()
+        .replace('\\', "/")
+}
+
+fn contains_glob_meta(target: &str) -> bool {
+    target
+        .bytes()
+        .any(|byte| matches!(byte, b'*' | b'?' | b'['))
+}
+
+fn glob_walk_root(current_dir: &Path, target: &str) -> PathBuf {
+    let pattern = resolve_target_pattern(current_dir, target);
+    let first_meta = pattern
+        .find(|ch| matches!(ch, '*' | '?' | '['))
+        .unwrap_or(pattern.len());
+    let prefix = pattern[..first_meta].trim_end_matches('/').to_string();
+    if prefix.is_empty() {
+        return current_dir.to_path_buf();
+    }
+
+    let mut root = if pattern[..first_meta].ends_with('/') {
+        PathBuf::from(prefix)
+    } else {
+        PathBuf::from(&prefix)
+            .parent()
+            .map(Path::to_path_buf)
+            .unwrap_or_else(|| current_dir.to_path_buf())
+    };
+
+    while !root.exists() {
+        let Some(parent) = root.parent() else {
+            return current_dir.to_path_buf();
+        };
+        root = parent.to_path_buf();
+    }
+
+    if root.is_file() {
+        root.parent()
+            .map(Path::to_path_buf)
+            .unwrap_or_else(|| current_dir.to_path_buf())
+    } else {
+        root
+    }
+}
+
+fn normalize_seen_path(path: &Path) -> PathBuf {
+    path.to_path_buf()
 }
 
 #[cfg(test)]

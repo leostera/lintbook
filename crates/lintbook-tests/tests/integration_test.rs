@@ -192,6 +192,102 @@ fn rust_generated_rule_reports_violation() {
 }
 
 #[test]
+fn check_accepts_directory_target() {
+    let temp_dir = setup_generated_rule_project();
+    let src_dir = temp_dir.path().join("src");
+    fs::create_dir_all(&src_dir).unwrap();
+    fs::write(src_dir.join("nested_clean.rs"), "fn main() {}\n").unwrap();
+    fs::write(src_dir.join("nested_bad.rs"), "fn main() { dbg!(1); }\n").unwrap();
+
+    let output = run_lintbook_check(temp_dir.path(), &["src"]);
+    let files = output["files"].as_array().unwrap();
+    let file_names = files
+        .iter()
+        .map(|file| file["file_path"].as_str().unwrap())
+        .collect::<Vec<_>>();
+
+    assert_eq!(output["statistics"]["total_files"], 2);
+    assert!(file_names.contains(&"nested_clean.rs"));
+    assert!(file_names.contains(&"nested_bad.rs"));
+    assert_eq!(output["statistics"]["total_violations"], 1);
+}
+
+#[test]
+fn check_accepts_glob_target() {
+    let temp_dir = setup_generated_rule_project();
+    let src_dir = temp_dir.path().join("src");
+    fs::create_dir_all(&src_dir).unwrap();
+    fs::write(src_dir.join("glob_clean.rs"), "fn main() {}\n").unwrap();
+    fs::write(src_dir.join("glob_bad.rs"), "fn main() { dbg!(1); }\n").unwrap();
+    fs::write(src_dir.join("ignored.txt"), "dbg!(1)\n").unwrap();
+
+    let output = run_lintbook_check(temp_dir.path(), &["src/glob_*.rs"]);
+    let files = output["files"].as_array().unwrap();
+    let file_names = files
+        .iter()
+        .map(|file| file["file_path"].as_str().unwrap())
+        .collect::<Vec<_>>();
+
+    assert_eq!(output["statistics"]["total_files"], 2);
+    assert!(file_names.contains(&"glob_clean.rs"));
+    assert!(file_names.contains(&"glob_bad.rs"));
+    assert_eq!(output["statistics"]["total_violations"], 1);
+}
+
+#[test]
+fn check_accepts_recursive_glob_target() {
+    let temp_dir = setup_generated_rule_project();
+    let nested_dir = temp_dir.path().join("src").join("nested");
+    fs::create_dir_all(&nested_dir).unwrap();
+    fs::write(
+        nested_dir.join("recursive_bad.rs"),
+        "fn main() { dbg!(1); }\n",
+    )
+    .unwrap();
+
+    let output = run_lintbook_check(temp_dir.path(), &["src/**/*.rs"]);
+    assert_eq!(output["statistics"]["total_files"], 1);
+    assert_eq!(output["statistics"]["total_violations"], 1);
+    assert_eq!(output["files"][0]["file_path"], "recursive_bad.rs");
+}
+
+#[test]
+fn check_accepts_mixed_directory_and_glob_targets() {
+    let temp_dir = setup_generated_rule_project();
+    let src_dir = temp_dir.path().join("src");
+    let tests_dir = temp_dir.path().join("tests");
+    fs::create_dir_all(&src_dir).unwrap();
+    fs::create_dir_all(&tests_dir).unwrap();
+    fs::write(src_dir.join("dir_bad.rs"), "fn main() { dbg!(1); }\n").unwrap();
+    fs::write(tests_dir.join("glob_bad.rs"), "fn main() { dbg!(1); }\n").unwrap();
+
+    let output = run_lintbook_check(temp_dir.path(), &["src", "tests/*.rs"]);
+    let files = output["files"].as_array().unwrap();
+    let file_names = files
+        .iter()
+        .map(|file| file["file_path"].as_str().unwrap())
+        .collect::<Vec<_>>();
+
+    assert_eq!(output["statistics"]["total_files"], 2);
+    assert!(file_names.contains(&"dir_bad.rs"));
+    assert!(file_names.contains(&"glob_bad.rs"));
+    assert_eq!(output["statistics"]["total_violations"], 2);
+}
+
+#[test]
+fn check_targets_are_relative_to_current_directory() {
+    let temp_dir = setup_generated_rule_project();
+    let src_dir = temp_dir.path().join("src");
+    fs::create_dir_all(&src_dir).unwrap();
+    fs::write(src_dir.join("local_bad.rs"), "fn main() { dbg!(1); }\n").unwrap();
+
+    let output = run_lintbook_check(&src_dir, &["local_bad.rs"]);
+    assert_eq!(output["statistics"]["total_files"], 1);
+    assert_eq!(output["statistics"]["total_violations"], 1);
+    assert_eq!(output["files"][0]["file_path"], "local_bad.rs");
+}
+
+#[test]
 fn check_json_flag_streams_json_lines() {
     let temp_dir = setup_generated_rule_project();
     let output = run_lintbook(temp_dir.path(), &["check", "--json", "bad.rs"]);

@@ -75,7 +75,7 @@ enum Cli {
         #[structopt(long, default_value = "human", help = "Output format (human, json)")]
         output: OutputFormat,
         #[structopt(
-            help = "Optional file paths to check (if not provided, scans entire repository)"
+            help = "Optional files, directories, or glob patterns to check (if not provided, scans entire repository)"
         )]
         files: Vec<String>,
     },
@@ -430,6 +430,7 @@ async fn check_project(output: OutputFormat, files: Vec<String>) -> anyhow::Resu
         return stream_check_results(
             output,
             &repo_root,
+            &current_dir,
             &config,
             &files,
             &active_rule_languages,
@@ -437,7 +438,13 @@ async fn check_project(output: OutputFormat, files: Vec<String>) -> anyhow::Resu
         );
     }
 
-    let mut results = collect_lint_results(&repo_root, &config, &files, &active_rule_languages)?;
+    let mut results = collect_lint_results(
+        &repo_root,
+        &current_dir,
+        &config,
+        &files,
+        &active_rule_languages,
+    )?;
     let generated_violations =
         lintbook_rules::run_generated_rules(&repo_root, &config, &results).await?;
     for result in &mut results {
@@ -536,6 +543,7 @@ struct JsonLineSummaryEvent {
 fn stream_check_results(
     output: OutputFormat,
     repo_root: &Path,
+    current_dir: &Path,
     config: &LintbookConfig,
     files: &[String],
     active_rule_languages: &HashSet<String>,
@@ -550,6 +558,7 @@ fn stream_check_results(
 
     stream_lint_results(
         repo_root,
+        current_dir,
         config,
         files,
         active_rule_languages,
@@ -618,6 +627,7 @@ fn stream_check_results(
 
 fn stream_lint_results<F>(
     repo_root: &Path,
+    current_dir: &Path,
     config: &LintbookConfig,
     files: &[String],
     active_rule_languages: &HashSet<String>,
@@ -635,10 +645,14 @@ where
         );
     }
 
-    for result in collect_lint_results(repo_root, config, files, active_rule_languages)? {
-        handler(result)?;
-    }
-    Ok(())
+    Scanner::scan_and_lint_targets_with(
+        repo_root,
+        current_dir,
+        files,
+        config,
+        active_rule_languages,
+        handler,
+    )
 }
 
 fn print_human_file_result(
@@ -699,6 +713,7 @@ fn print_human_file_result(
 
 fn collect_lint_results(
     repo_root: &Path,
+    current_dir: &Path,
     config: &LintbookConfig,
     files: &[String],
     active_rule_languages: &HashSet<String>,
@@ -707,64 +722,7 @@ fn collect_lint_results(
         return Scanner::scan_and_lint_files(repo_root, config, active_rule_languages);
     }
 
-    let mut results = Vec::new();
-    for file_path_str in files {
-        let file_path = if Path::new(file_path_str).is_absolute() {
-            PathBuf::from(file_path_str)
-        } else {
-            repo_root.join(file_path_str)
-        };
-
-        if !file_path.exists() {
-            eprintln!("Warning: File not found: {}", file_path.display());
-            continue;
-        }
-
-        if file_path.is_dir() {
-            eprintln!("Warning: Skipping directory: {}", file_path.display());
-            continue;
-        }
-
-        let Some(extension) = file_path.extension().and_then(|ext| ext.to_str()) else {
-            continue;
-        };
-        let Some(grammar) = lintbook_lang::get_grammar_for_extension(extension) else {
-            continue;
-        };
-        if !config
-            .lintbook
-            .languages
-            .contains(&grammar.name().to_string())
-            || (!active_rule_languages.contains(grammar.name()) && grammar.lints().is_empty())
-        {
-            continue;
-        }
-
-        let start_time = std::time::Instant::now();
-        if grammar.lints().is_empty() {
-            results.push(LintResult {
-                file_path: file_path.clone(),
-                duration: start_time.elapsed(),
-                status: LintStatus::Ok,
-                violations: vec![],
-                language: Some(grammar),
-            });
-            continue;
-        }
-
-        match fs::read_to_string(&file_path) {
-            Ok(source) => {
-                results.push(lintbook_lang::parse(
-                    config, &file_path, &source, grammar, start_time,
-                ));
-            }
-            Err(error) => {
-                eprintln!("Error reading file {}: {}", file_path.display(), error);
-            }
-        }
-    }
-
-    Ok(results)
+    Scanner::scan_and_lint_targets(repo_root, current_dir, files, config, active_rule_languages)
 }
 
 fn print_check_results(

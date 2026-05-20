@@ -12,6 +12,7 @@ tree-sitter = { workspace = true }
 serde = { workspace = true }
 ignore = "0.4"
 num_cpus = "1.16"
+globset = "0.4"
 
 [dev-dependencies]
 tempfile = "3.0"
