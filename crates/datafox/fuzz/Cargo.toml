@@ -8,7 +8,7 @@ edition = "2024"
 cargo-fuzz = true
 
 [dependencies]
-datafox = { path = "../crates/datafox" }
+datafox = { path = ".." }
 libfuzzer-sys = "0.4"
 
 [workspace]
