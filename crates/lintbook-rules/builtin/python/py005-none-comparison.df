@@ -1,0 +1,1 @@
+node(Node, "comparison_operator", _, _, _, _), text(Node, Text), matchesRegex(Text, "(^|[^A-Za-z_])None\s*(==|!=)|(==|!=)\s*None($|[^A-Za-z_])")

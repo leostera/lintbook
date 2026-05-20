@@ -92,3 +92,13 @@ Status values:
 | RS133 | suspicious-else-formatting | converted-enabled | Uses if-expression source text spacing regexes. |
 | RS138 | suspicious-unary-op-formatting | converted-enabled | Unary expression text pattern. |
 | RS139 | swap-ptr-to-ref | converted-enabled | Swap call pattern. |
+
+## Python Rules
+
+The parked Python crate remains in the tree while rules are converted gradually.
+
+| Rule | Name | Status | Notes |
+| --- | --- | --- | --- |
+| PY003 | no-os-getenv | converted-enabled | Uses Python call/attribute tree-sitter fields. |
+| PY004 | no-bare-except | converted-enabled | Uses except-clause text matching. |
+| PY005 | none-comparison | converted-enabled | Uses comparison-operator text matching. |

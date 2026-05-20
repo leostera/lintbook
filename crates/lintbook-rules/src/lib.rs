@@ -495,6 +495,27 @@ const BUILTIN_RULES: &[BuiltinRuleAsset] = &[
         markdown: include_str!("../builtin/rust/rs139-swap-ptr-to-ref.md"),
         query: include_str!("../builtin/rust/rs139-swap-ptr-to-ref.df"),
     },
+    BuiltinRuleAsset {
+        name: "no-os-getenv",
+        markdown_path: "builtin/python/py003-no-os-getenv.md",
+        query_path: "builtin/python/py003-no-os-getenv.df",
+        markdown: include_str!("../builtin/python/py003-no-os-getenv.md"),
+        query: include_str!("../builtin/python/py003-no-os-getenv.df"),
+    },
+    BuiltinRuleAsset {
+        name: "no-bare-except",
+        markdown_path: "builtin/python/py004-no-bare-except.md",
+        query_path: "builtin/python/py004-no-bare-except.df",
+        markdown: include_str!("../builtin/python/py004-no-bare-except.md"),
+        query: include_str!("../builtin/python/py004-no-bare-except.df"),
+    },
+    BuiltinRuleAsset {
+        name: "none-comparison",
+        markdown_path: "builtin/python/py005-none-comparison.md",
+        query_path: "builtin/python/py005-none-comparison.df",
+        markdown: include_str!("../builtin/python/py005-none-comparison.md"),
+        query: include_str!("../builtin/python/py005-none-comparison.df"),
+    },
 ];
 
 pub const RULE_AUTHORING_GUIDE: &str = r#"lintbook custom rules are Rust-only in this version.
@@ -3016,11 +3037,17 @@ Avoid dbg! in committed code.
     #[test]
     fn compiles_embedded_builtin_rules() {
         let rules = compile_builtin_rules().unwrap();
-        assert_eq!(rules.len(), 67);
+        assert_eq!(rules.len(), 70);
         assert!(rules.iter().any(|rule| {
             rule.id == "RS013"
                 && rule.name == "eq-op"
                 && rule.language == "rust"
+                && !rule.queries.is_empty()
+        }));
+        assert!(rules.iter().any(|rule| {
+            rule.id == "PY003"
+                && rule.name == "no-os-getenv"
+                && rule.language == "python"
                 && !rule.queries.is_empty()
         }));
 
@@ -3030,7 +3057,12 @@ Avoid dbg! in committed code.
             .any(|info| { info.id == "RS095" && info.name == "four-forward-slashes" }));
     }
 
-    async fn assert_builtin_rule(rule_id: &str, positives: &[&str], negatives: &[&str]) {
+    async fn assert_builtin_rule_for_grammar(
+        grammar: Grammar,
+        rule_id: &str,
+        positives: &[&str],
+        negatives: &[&str],
+    ) {
         let temp = tempdir().unwrap();
         let rules = compile_builtin_rules()
             .unwrap()
@@ -3041,7 +3073,7 @@ Avoid dbg! in committed code.
 
         for positive in positives {
             let violations =
-                run_rules_on_file_sync(temp.path(), Grammar::Rust, positive, &rules).unwrap();
+                run_rules_on_file_sync(temp.path(), grammar, positive, &rules).unwrap();
             assert!(
                 violations
                     .iter()
@@ -3052,7 +3084,7 @@ Avoid dbg! in committed code.
 
         for negative in negatives {
             let violations =
-                run_rules_on_file_sync(temp.path(), Grammar::Rust, negative, &rules).unwrap();
+                run_rules_on_file_sync(temp.path(), grammar, negative, &rules).unwrap();
             assert!(
                 violations
                     .iter()
@@ -3060,6 +3092,10 @@ Avoid dbg! in committed code.
                 "{rule_id} flagged negative sample:\n{negative}\n{violations:#?}"
             );
         }
+    }
+
+    async fn assert_builtin_rule(rule_id: &str, positives: &[&str], negatives: &[&str]) {
+        assert_builtin_rule_for_grammar(Grammar::Rust, rule_id, positives, negatives).await;
     }
 
     #[tokio::test]
@@ -3451,6 +3487,51 @@ fn main() {
 
         for case in cases {
             assert_builtin_rule(case.rule_id, case.positives, case.negatives).await;
+        }
+    }
+
+    #[tokio::test]
+    async fn embedded_python_rules_match_positive_and_negative_samples() {
+        let cases = [
+            BuiltinRuleFixture {
+                rule_id: "PY003",
+                positives: &[
+                    "import os\nport = os.getenv('PORT')\n",
+                    "import os\nport = os.getenv('PORT', '8080')\n",
+                ],
+                negatives: &[
+                    "import config\nport = config.port()\n",
+                    "import os\nport = os.environ.get('PORT')\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "PY004",
+                positives: &["try:\n    risky_operation()\nexcept:\n    pass\n"],
+                negatives: &[
+                    "try:\n    risky_operation()\nexcept ValueError:\n    pass\n",
+                    "try:\n    risky_operation()\nexcept (ValueError, TypeError):\n    pass\n",
+                    "try:\n    risky_operation()\nexcept Exception as error:\n    pass\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "PY005",
+                positives: &["if x == None:\n    pass\n", "if None != y:\n    pass\n"],
+                negatives: &[
+                    "if x is None:\n    pass\n",
+                    "if y is not None:\n    pass\n",
+                    "if x == 5:\n    pass\n",
+                ],
+            },
+        ];
+
+        for case in cases {
+            assert_builtin_rule_for_grammar(
+                Grammar::Python,
+                case.rule_id,
+                case.positives,
+                case.negatives,
+            )
+            .await;
         }
     }
 

@@ -1,0 +1,1 @@
+node(Node, "except_clause", _, _, _, _), trimmedText(Node, Text), matchesRegex(Text, "^except\s*:")

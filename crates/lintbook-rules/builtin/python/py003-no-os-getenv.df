@@ -1,0 +1,1 @@
+node(Node, "call", _, _, _, _), field(Node, "function", Function), node(Function, "attribute", _, _, _, _), field(Function, "object", Object), text(Object, "os"), field(Function, "attribute", Attribute), text(Attribute, "getenv")
