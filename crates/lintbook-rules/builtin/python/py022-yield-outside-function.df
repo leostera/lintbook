@@ -1,0 +1,1 @@
+node(Node, "yield", _, _, _, _), pythonOutsideFunction(Node)

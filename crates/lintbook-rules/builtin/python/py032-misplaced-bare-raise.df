@@ -1,0 +1,1 @@
+node(Node, "raise_statement", _, _, _, _), trimmedText(Node, "raise"), pythonOutsideExcept(Node)

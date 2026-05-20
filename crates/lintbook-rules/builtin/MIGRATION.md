@@ -115,10 +115,16 @@ The parked Python crate remains in the tree while rules are converted gradually.
 | PY016 | assert-tuple | converted-enabled | Uses assert statement tuple child facts. |
 | PY017 | is-literal | converted-enabled | Uses identity comparison operators with literal child kinds. |
 | PY019 | if-tuple | converted-enabled | Uses if/elif tuple child facts. |
+| PY020 | break-outside-loop | converted-enabled | Uses reusable Python outside-loop context facts. |
+| PY021 | continue-outside-loop | converted-enabled | Uses reusable Python outside-loop context facts. |
+| PY022 | yield-outside-function | converted-enabled | Uses reusable Python outside-function context facts. |
+| PY023 | return-outside-function | converted-enabled | Uses reusable Python outside-function context facts. |
 | PY024 | default-except-not-last | converted-enabled | Uses direct try/except child order and except-clause text. |
 | PY025 | raise-not-implemented | converted-enabled | Uses raise statement child shapes. |
 | PY026 | return-in-init | converted-enabled | Uses function name fields and descendant return statements. |
+| PY027 | nonlocal-and-global | converted-enabled | Uses reusable same-function declaration facts. |
 | PY028 | continue-in-finally | converted-enabled | Uses finally-clause descendants. |
 | PY029 | duplicate-bases | converted-enabled | Uses class argument list base text equality. |
 | PY030 | invalid-all-object | converted-enabled | Uses `__all__` assignment value and element kind facts. |
 | PY031 | invalid-all-format | converted-enabled | Uses `__all__` assignment parents and mutation call shapes. |
+| PY032 | misplaced-bare-raise | converted-enabled | Uses reusable Python outside-except context facts. |

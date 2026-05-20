@@ -16,7 +16,7 @@ use std::sync::Arc;
 use tree_sitter::{Node, Parser};
 
 const SCHEMA_VERSION: u32 = 2;
-const FACT_SCHEMA_VERSION: u32 = 9;
+const FACT_SCHEMA_VERSION: u32 = 10;
 const BINCODE_CACHE_FORMAT_VERSION: u32 = 2;
 const LINTBOOK_DIR: &str = ".lintbook";
 const RULES_DIR: &str = "rules";
@@ -608,6 +608,34 @@ const BUILTIN_RULES: &[BuiltinRuleAsset] = &[
         query: include_str!("../builtin/python/py019-if-tuple.df"),
     },
     BuiltinRuleAsset {
+        name: "break-outside-loop",
+        markdown_path: "builtin/python/py020-break-outside-loop.md",
+        query_path: "builtin/python/py020-break-outside-loop.df",
+        markdown: include_str!("../builtin/python/py020-break-outside-loop.md"),
+        query: include_str!("../builtin/python/py020-break-outside-loop.df"),
+    },
+    BuiltinRuleAsset {
+        name: "continue-outside-loop",
+        markdown_path: "builtin/python/py021-continue-outside-loop.md",
+        query_path: "builtin/python/py021-continue-outside-loop.df",
+        markdown: include_str!("../builtin/python/py021-continue-outside-loop.md"),
+        query: include_str!("../builtin/python/py021-continue-outside-loop.df"),
+    },
+    BuiltinRuleAsset {
+        name: "yield-outside-function",
+        markdown_path: "builtin/python/py022-yield-outside-function.md",
+        query_path: "builtin/python/py022-yield-outside-function.df",
+        markdown: include_str!("../builtin/python/py022-yield-outside-function.md"),
+        query: include_str!("../builtin/python/py022-yield-outside-function.df"),
+    },
+    BuiltinRuleAsset {
+        name: "return-outside-function",
+        markdown_path: "builtin/python/py023-return-outside-function.md",
+        query_path: "builtin/python/py023-return-outside-function.df",
+        markdown: include_str!("../builtin/python/py023-return-outside-function.md"),
+        query: include_str!("../builtin/python/py023-return-outside-function.df"),
+    },
+    BuiltinRuleAsset {
         name: "default-except-not-last",
         markdown_path: "builtin/python/py024-default-except-not-last.md",
         query_path: "builtin/python/py024-default-except-not-last.df",
@@ -627,6 +655,13 @@ const BUILTIN_RULES: &[BuiltinRuleAsset] = &[
         query_path: "builtin/python/py026-return-in-init.df",
         markdown: include_str!("../builtin/python/py026-return-in-init.md"),
         query: include_str!("../builtin/python/py026-return-in-init.df"),
+    },
+    BuiltinRuleAsset {
+        name: "nonlocal-and-global",
+        markdown_path: "builtin/python/py027-nonlocal-and-global.md",
+        query_path: "builtin/python/py027-nonlocal-and-global.df",
+        markdown: include_str!("../builtin/python/py027-nonlocal-and-global.md"),
+        query: include_str!("../builtin/python/py027-nonlocal-and-global.df"),
     },
     BuiltinRuleAsset {
         name: "continue-in-finally",
@@ -655,6 +690,13 @@ const BUILTIN_RULES: &[BuiltinRuleAsset] = &[
         query_path: "builtin/python/py031-invalid-all-format.df",
         markdown: include_str!("../builtin/python/py031-invalid-all-format.md"),
         query: include_str!("../builtin/python/py031-invalid-all-format.df"),
+    },
+    BuiltinRuleAsset {
+        name: "misplaced-bare-raise",
+        markdown_path: "builtin/python/py032-misplaced-bare-raise.md",
+        query_path: "builtin/python/py032-misplaced-bare-raise.df",
+        markdown: include_str!("../builtin/python/py032-misplaced-bare-raise.md"),
+        query: include_str!("../builtin/python/py032-misplaced-bare-raise.df"),
     },
 ];
 
@@ -1847,6 +1889,12 @@ fn all_fact_predicates() -> BTreeSet<String> {
         "line",
         "nextLine",
         "previousLine",
+        "pythonOutsideLoop",
+        "pythonOutsideFunction",
+        "pythonInsideFinally",
+        "pythonOutsideExcept",
+        "pythonScopeDeclaration",
+        "pythonNameUse",
     ]
     .into_iter()
     .map(str::to_string)
@@ -1961,6 +2009,7 @@ fn build_fact_set_for_predicates(
         required_predicates,
         facts: BTreeMap::new(),
         locations: BTreeMap::new(),
+        node_kinds: BTreeMap::new(),
         next_id: 1,
         next_line_id: -1,
     };
@@ -1987,6 +2036,7 @@ struct FactBuilder<'a> {
     required_predicates: &'a BTreeSet<String>,
     facts: BTreeMap<String, Vec<Vec<Value>>>,
     locations: BTreeMap<i64, NodeLocation>,
+    node_kinds: BTreeMap<i64, String>,
     next_id: i64,
     next_line_id: i64,
 }
@@ -2011,6 +2061,7 @@ impl<'a> FactBuilder<'a> {
     ) -> i64 {
         let id = self.next_id;
         self.next_id += 1;
+        self.node_kinds.insert(id, node.kind().to_string());
 
         let start = node.start_position();
         let end = node.end_position();
@@ -2076,6 +2127,17 @@ impl<'a> FactBuilder<'a> {
 
         if self.wants("named") && node.is_named() {
             self.insert("named", vec![Value::integer(id)]);
+        }
+
+        if self.wants_any(&[
+            "pythonOutsideLoop",
+            "pythonOutsideFunction",
+            "pythonInsideFinally",
+            "pythonOutsideExcept",
+            "pythonScopeDeclaration",
+            "pythonNameUse",
+        ]) {
+            self.insert_python_context_facts(id, node, ancestors);
         }
 
         if let Some(parent_id) = parent {
@@ -2263,6 +2325,149 @@ impl<'a> FactBuilder<'a> {
                 }
             }
         }
+    }
+
+    fn insert_python_context_facts(&mut self, id: i64, node: Node<'a>, ancestors: &[i64]) {
+        if self.wants("pythonOutsideLoop") && !self.has_python_loop_context(ancestors) {
+            self.insert("pythonOutsideLoop", vec![Value::integer(id)]);
+        }
+        if self.wants("pythonOutsideFunction") && !self.has_python_function_context(ancestors) {
+            self.insert("pythonOutsideFunction", vec![Value::integer(id)]);
+        }
+        if self.wants("pythonInsideFinally") && self.has_python_finally_context(ancestors) {
+            self.insert("pythonInsideFinally", vec![Value::integer(id)]);
+        }
+        if self.wants("pythonOutsideExcept") && !self.has_python_except_context(ancestors) {
+            self.insert("pythonOutsideExcept", vec![Value::integer(id)]);
+        }
+        if self.wants("pythonScopeDeclaration")
+            && matches!(node.kind(), "global_statement" | "nonlocal_statement")
+        {
+            self.insert_python_scope_declarations(id, node, ancestors);
+        }
+        if self.wants("pythonNameUse")
+            && node.kind() == "identifier"
+            && !self.has_python_import_context(ancestors)
+        {
+            if let Ok(name) = node.utf8_text(self.source.as_bytes()) {
+                self.insert("pythonNameUse", vec![Value::string(name)]);
+            }
+        }
+    }
+
+    fn insert_python_scope_declarations(&mut self, id: i64, node: Node<'a>, ancestors: &[i64]) {
+        let declaration_kind = match node.kind() {
+            "global_statement" => "global",
+            "nonlocal_statement" => "nonlocal",
+            _ => return,
+        };
+        let Some(scope) = self.nearest_python_function(ancestors) else {
+            return;
+        };
+
+        for index in 0..node.child_count() {
+            let Some(child) = node.child(index as u32) else {
+                continue;
+            };
+            if child.kind() != "identifier" {
+                continue;
+            }
+            if let Ok(name) = child.utf8_text(self.source.as_bytes()) {
+                self.insert(
+                    "pythonScopeDeclaration",
+                    vec![
+                        Value::integer(scope),
+                        Value::string(declaration_kind),
+                        Value::string(name),
+                        Value::integer(id),
+                    ],
+                );
+            }
+        }
+    }
+
+    fn has_python_loop_context(&self, ancestors: &[i64]) -> bool {
+        for kind in self.ancestor_kinds_rev(ancestors) {
+            if is_python_scope_boundary(kind) {
+                return false;
+            }
+            if matches!(kind, "for_statement" | "while_statement") {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn has_python_function_context(&self, ancestors: &[i64]) -> bool {
+        self.ancestor_kinds_rev(ancestors).any(|kind| {
+            matches!(
+                kind,
+                "function_definition"
+                    | "async_function_definition"
+                    | "lambda"
+                    | "generator_expression"
+            )
+        })
+    }
+
+    fn has_python_finally_context(&self, ancestors: &[i64]) -> bool {
+        for kind in self.ancestor_kinds_rev(ancestors) {
+            if is_python_scope_boundary(kind) {
+                return false;
+            }
+            if kind == "finally_clause" {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn has_python_except_context(&self, ancestors: &[i64]) -> bool {
+        for kind in self.ancestor_kinds_rev(ancestors) {
+            if kind == "except_clause" {
+                return true;
+            }
+            if matches!(
+                kind,
+                "try_statement"
+                    | "function_definition"
+                    | "async_function_definition"
+                    | "class_definition"
+                    | "module"
+            ) {
+                return false;
+            }
+        }
+        false
+    }
+
+    fn has_python_import_context(&self, ancestors: &[i64]) -> bool {
+        self.ancestor_kinds_rev(ancestors)
+            .any(|kind| matches!(kind, "import_statement" | "import_from_statement"))
+    }
+
+    fn nearest_python_function(&self, ancestors: &[i64]) -> Option<i64> {
+        ancestors.iter().rev().find_map(|ancestor| {
+            self.node_kinds
+                .get(ancestor)
+                .is_some_and(|kind| {
+                    matches!(
+                        kind.as_str(),
+                        "function_definition" | "async_function_definition"
+                    )
+                })
+                .then_some(*ancestor)
+        })
+    }
+
+    fn ancestor_kinds_rev<'b>(
+        &'b self,
+        ancestors: &'b [i64],
+    ) -> impl Iterator<Item = &'b str> + 'b {
+        ancestors
+            .iter()
+            .rev()
+            .filter_map(|ancestor| self.node_kinds.get(ancestor).map(String::as_str))
     }
 
     fn insert_derived_node_facts(
@@ -2595,6 +2800,13 @@ fn child_text(child_infos: &[ChildFactInfo], id: i64) -> Option<&str> {
 
 fn is_comment_kind(kind: &str) -> bool {
     matches!(kind, "line_comment" | "block_comment")
+}
+
+fn is_python_scope_boundary(kind: &str) -> bool {
+    matches!(
+        kind,
+        "function_definition" | "async_function_definition" | "class_definition" | "lambda"
+    )
 }
 
 fn is_comparison_operator(operator: &str) -> bool {
@@ -3177,7 +3389,7 @@ Avoid dbg! in committed code.
     #[test]
     fn compiles_embedded_builtin_rules() {
         let rules = compile_builtin_rules().unwrap();
-        assert_eq!(rules.len(), 90);
+        assert_eq!(rules.len(), 96);
         assert!(rules.iter().any(|rule| {
             rule.id == "RS013"
                 && rule.name == "eq-op"
@@ -3831,6 +4043,51 @@ fn main() {
                 ],
             },
             BuiltinRuleFixture {
+                rule_id: "PY020",
+                positives: &[
+                    "def my_function():\n    if condition:\n        break\n",
+                    "for item in items:\n    def inner():\n        break\n",
+                ],
+                negatives: &[
+                    "for item in items:\n    if condition:\n        break\n",
+                    "def process_items():\n    for item in items:\n        break\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "PY021",
+                positives: &[
+                    "def my_function():\n    if condition:\n        continue\n",
+                    "for item in items:\n    def inner():\n        continue\n",
+                ],
+                negatives: &[
+                    "for item in items:\n    if should_skip(item):\n        continue\n",
+                    "def process_items():\n    for item in items:\n        continue\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "PY022",
+                positives: &[
+                    "if condition:\n    yield value\n",
+                    "class MyClass:\n    if debug:\n        yield 'debug'\n",
+                ],
+                negatives: &[
+                    "def my_generator():\n    yield 42\n",
+                    "async def async_generator():\n    yield 1\n",
+                    "generator_lambda = lambda: (yield 42)\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "PY023",
+                positives: &[
+                    "if condition:\n    return value\n",
+                    "class MyClass:\n    if debug:\n        return 'debug'\n",
+                ],
+                negatives: &[
+                    "def my_function():\n    return 'normal'\n",
+                    "async def async_function():\n    return 'result'\n",
+                ],
+            },
+            BuiltinRuleFixture {
                 rule_id: "PY024",
                 positives: &[
                     "try:\n    risky_operation()\nexcept:\n    pass\nexcept ValueError:\n    pass\n",
@@ -3866,6 +4123,18 @@ fn main() {
                     "class GoodClass:\n    def __init__(self):\n        self.value = 42\n",
                     "class WithNew:\n    def __new__(cls, value):\n        return None\n",
                     "class MethodsWithReturns:\n    def get_value(self):\n        return self.value\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "PY027",
+                positives: &[
+                    "def outer():\n    x = 10\n    def inner():\n        global x\n        nonlocal x\n",
+                    "def outer():\n    value = 42\n    def inner():\n        nonlocal value\n        global value\n",
+                ],
+                negatives: &[
+                    "def only_global():\n    def inner():\n        global global_var\n",
+                    "def different_variables():\n    local_var = 10\n    def inner():\n        global global_var\n        nonlocal local_var\n",
+                    "def separate_functions():\n    value = 42\n    def func1():\n        global value\n    def func2():\n        nonlocal value\n",
                 ],
             },
             BuiltinRuleFixture {
@@ -3915,6 +4184,18 @@ fn main() {
                 negatives: &[
                     "__all__ = ['public_function', 'PublicClass']\n",
                     "__all__ = []\n",
+                ],
+            },
+            BuiltinRuleFixture {
+                rule_id: "PY032",
+                positives: &[
+                    "raise\n",
+                    "def bad_function():\n    raise\n",
+                    "try:\n    operation()\nfinally:\n    raise\n",
+                ],
+                negatives: &[
+                    "try:\n    risky_operation()\nexcept ValueError:\n    raise\n",
+                    "def function():\n    raise ValueError('not bare')\n",
                 ],
             },
         ];

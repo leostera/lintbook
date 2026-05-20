@@ -1,0 +1,2 @@
+pythonScopeDeclaration(Scope, "global", Name, Node), pythonScopeDeclaration(Scope, "nonlocal", Name, Other);
+pythonScopeDeclaration(Scope, "nonlocal", Name, Node), pythonScopeDeclaration(Scope, "global", Name, Other)

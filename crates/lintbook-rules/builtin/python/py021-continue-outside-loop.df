@@ -1,0 +1,1 @@
+node(Node, "continue_statement", _, _, _, _), pythonOutsideLoop(Node)
