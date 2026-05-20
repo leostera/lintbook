@@ -16,7 +16,7 @@ use std::sync::Arc;
 use tree_sitter::{Node, Parser};
 
 const SCHEMA_VERSION: u32 = 2;
-const FACT_SCHEMA_VERSION: u32 = 8;
+const FACT_SCHEMA_VERSION: u32 = 9;
 const LINTBOOK_DIR: &str = ".lintbook";
 const RULES_DIR: &str = "rules";
 const GEN_DIR: &str = "gen";
@@ -682,14 +682,13 @@ struct CachedFactSet {
     language: String,
     source_sha256: String,
     predicate_fingerprint: String,
-    facts: BTreeMap<String, Vec<Vec<Value>>>,
+    storage: InMemoryStorage,
     locations: BTreeMap<i64, NodeLocation>,
 }
 
 impl CachedFactSet {
     fn into_runtime(self) -> (InMemoryStorage, HashMap<i64, NodeLocation>) {
-        let storage = InMemoryStorage::from_facts(self.facts);
-        (storage, self.locations.into_iter().collect())
+        (self.storage, self.locations.into_iter().collect())
     }
 }
 
@@ -1765,12 +1764,13 @@ fn build_fact_set_for_predicates(
     if builder.wants("invisibleCharacter") {
         builder.insert_invisible_character_facts();
     }
+    let storage = InMemoryStorage::from_facts(builder.facts);
     Ok(CachedFactSet {
         schema_version: FACT_SCHEMA_VERSION,
         language: grammar.name().to_string(),
         source_sha256: source_sha256.to_string(),
         predicate_fingerprint: predicate_fingerprint.to_string(),
-        facts: builder.facts,
+        storage,
         locations: builder.locations,
     })
 }
@@ -2910,7 +2910,10 @@ Avoid dbg! in committed code.
         assert_eq!(cached.language, "rust");
         assert_eq!(cached.source_sha256, source_sha256);
         assert_eq!(cached.predicate_fingerprint, predicate_fingerprint);
-        assert!(!cached.facts.is_empty());
+        assert!(!cached
+            .storage
+            .facts_matching("node", &[None, None, None, None, None, None])
+            .is_empty());
         assert!(!cached.locations.is_empty());
 
         let empty_cache = CachedFactSet {
@@ -2918,7 +2921,7 @@ Avoid dbg! in committed code.
             language: "rust".to_string(),
             source_sha256: cached.source_sha256,
             predicate_fingerprint,
-            facts: BTreeMap::new(),
+            storage: InMemoryStorage::new(),
             locations: BTreeMap::new(),
         };
         fs::write(&path, bincode::serialize(&empty_cache).unwrap()).unwrap();
@@ -2936,11 +2939,7 @@ Avoid dbg! in committed code.
             "test-sha",
         )
         .unwrap();
-        let predicates = facts
-            .facts
-            .keys()
-            .map(String::as_str)
-            .collect::<HashSet<_>>();
+        let predicates = facts.storage.predicates().collect::<HashSet<_>>();
 
         assert_eq!(facts.schema_version, FACT_SCHEMA_VERSION);
         assert!(predicates.contains("parent"));
@@ -2954,10 +2953,9 @@ Avoid dbg! in committed code.
         assert!(predicates.contains("literal"));
 
         assert!(facts
-            .facts
-            .get("literal")
+            .storage
+            .facts_matching("literal", &[None, None, None, None])
             .into_iter()
-            .flatten()
             .any(|tuple| {
                 tuple.get(1) == Some(&Value::string("integer"))
                     && tuple.get(2) == Some(&Value::string("2_u32"))
