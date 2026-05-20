@@ -64,7 +64,7 @@ impl Scanner {
     pub fn scan_and_lint_files(
         repo_root: &Path,
         config: &lintbook_config::LintbookConfig,
-        active_rule_languages: &HashSet<String>,
+        active_rule_languages: &HashSet<Grammar>,
     ) -> Result<Vec<LintResult<Grammar>>> {
         use std::sync::{Arc, Mutex};
 
@@ -88,7 +88,7 @@ impl Scanner {
         current_dir: &Path,
         targets: &[String],
         config: &lintbook_config::LintbookConfig,
-        active_rule_languages: &HashSet<String>,
+        active_rule_languages: &HashSet<Grammar>,
     ) -> Result<Vec<LintResult<Grammar>>> {
         let results = Arc::new(Mutex::new(Vec::new()));
         let results_for_handler = Arc::clone(&results);
@@ -117,7 +117,7 @@ impl Scanner {
         current_dir: &Path,
         targets: &[String],
         config: &lintbook_config::LintbookConfig,
-        active_rule_languages: &HashSet<String>,
+        active_rule_languages: &HashSet<Grammar>,
         handler: F,
     ) -> Result<()>
     where
@@ -191,7 +191,7 @@ impl Scanner {
     pub fn scan_and_lint_files_with<F>(
         repo_root: &Path,
         config: &lintbook_config::LintbookConfig,
-        active_rule_languages: &HashSet<String>,
+        active_rule_languages: &HashSet<Grammar>,
         handler: F,
     ) -> Result<()>
     where
@@ -211,7 +211,7 @@ impl Scanner {
     pub fn lint_file(
         path: &Path,
         config: &lintbook_config::LintbookConfig,
-        active_rule_languages: &HashSet<String>,
+        active_rule_languages: &HashSet<Grammar>,
     ) -> Result<Option<LintResult<Grammar>>> {
         let Some(extension) = path.extension().and_then(|ext| ext.to_str()) else {
             return Ok(None);
@@ -223,7 +223,7 @@ impl Scanner {
             .lintbook
             .languages
             .contains(&grammar.name().to_string())
-            || (!active_rule_languages.contains(grammar.name()) && grammar.lints().is_empty())
+            || (!active_rule_languages.contains(&grammar) && grammar.lints().is_empty())
         {
             return Ok(None);
         }
@@ -254,26 +254,21 @@ impl Scanner {
         include_globs: Option<Arc<GlobSet>>,
         seen: Option<Arc<Mutex<HashSet<PathBuf>>>>,
         config: &lintbook_config::LintbookConfig,
-        active_rule_languages: &HashSet<String>,
+        active_rule_languages: &HashSet<Grammar>,
         handler: Arc<F>,
     ) -> Result<()>
     where
         F: Fn(LintResult<Grammar>) -> Result<()> + Send + Sync + 'static,
     {
         // Collect enabled extensions for quick filtering
-        let enabled_extensions: HashSet<String> = config
-            .lintbook
-            .languages
+        let enabled_extensions: HashSet<String> = active_rule_languages
             .iter()
-            .filter_map(|lang| {
-                if !active_rule_languages.contains(lang) {
-                    return None;
-                }
-                lintbook_lang::get_supported_grammars()
-                    .into_iter()
-                    .find(|g| g.name() == lang)
+            .flat_map(|grammar| {
+                grammar
+                    .extensions()
+                    .iter()
+                    .map(|extension| extension.to_string())
             })
-            .flat_map(|g| g.extensions().iter().map(|e| e.to_string()))
             .collect();
 
         let callback_error = Arc::new(Mutex::new(None));

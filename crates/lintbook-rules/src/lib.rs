@@ -1,6 +1,7 @@
 use anyhow::{anyhow, bail, Context, Result};
 use datafox::{
-    Clause, DatafoxClient, DatafoxConfig, InMemoryStorage, Query, Substitution, Term, Value,
+    Clause, DatafoxClient, DatafoxConfig, DatafoxEnvironment, InMemoryStorage, PlanningCache,
+    PreparedQuery, Query, Substitution, Term, Value,
 };
 use lintbook_config::LintbookConfig;
 use lintbook_core::{LintResult, LintStatus, LintViolation};
@@ -865,11 +866,22 @@ pub fn load_all_rules(repo_root: &Path, config: &LintbookConfig) -> Result<Vec<C
 pub fn active_rule_languages(
     repo_root: &Path,
     config: &LintbookConfig,
-) -> Result<BTreeSet<String>> {
-    Ok(load_all_rules(repo_root, config)?
-        .into_iter()
-        .map(|rule| rule.language)
-        .collect())
+) -> Result<HashSet<Grammar>> {
+    let mut languages = HashSet::new();
+
+    for info in builtin_rule_infos()? {
+        if config.is_lint_enabled(&info.language, &info.name) {
+            languages.insert(Grammar::from_name(&info.language)?);
+        }
+    }
+
+    for rule in load_compiled_rules(repo_root)? {
+        if rule_enabled(config, &rule) {
+            languages.insert(Grammar::from_name(&rule.language)?);
+        }
+    }
+
+    Ok(languages)
 }
 
 pub fn incomplete_rules(repo_root: &Path) -> Result<Vec<IncompleteRule>> {
@@ -945,8 +957,41 @@ pub async fn run_generated_rules_with_profile(
 #[derive(Clone)]
 pub struct GeneratedRuleRunner {
     repo_root: PathBuf,
-    rules_by_language: HashMap<String, Arc<Vec<CompiledRule>>>,
+    rules_by_language: HashMap<Grammar, Arc<Vec<PreparedCompiledRule>>>,
     evaluation_profile: GeneratedRuleEvaluationProfile,
+    datafox_environment: DatafoxEnvironment,
+}
+
+#[derive(Clone)]
+struct PreparedCompiledRule {
+    rule: CompiledRule,
+    prepared_queries: Vec<Arc<PreparedQuery>>,
+}
+
+impl PreparedCompiledRule {
+    fn new(rule: CompiledRule, datafox_environment: &DatafoxEnvironment) -> Result<Self> {
+        let prepared_queries = rule
+            .queries
+            .iter()
+            .map(|query| datafox_environment.prepare(query))
+            .collect::<datafox::Result<Vec<_>>>()
+            .with_context(|| format!("Failed to prepare generated rule `{}`", rule.id))?;
+
+        Ok(Self {
+            rule,
+            prepared_queries,
+        })
+    }
+}
+
+fn prepare_compiled_rules(
+    rules: impl IntoIterator<Item = CompiledRule>,
+    datafox_environment: &DatafoxEnvironment,
+) -> Result<Vec<PreparedCompiledRule>> {
+    rules
+        .into_iter()
+        .map(|rule| PreparedCompiledRule::new(rule, datafox_environment))
+        .collect()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -975,8 +1020,9 @@ impl GeneratedRuleEvaluationProfile {
     fn client_for<'store>(
         &self,
         storage: &'store InMemoryStorage,
+        datafox_environment: &DatafoxEnvironment,
     ) -> Result<DatafoxClient<'store>> {
-        let config = DatafoxConfig::new(storage);
+        let config = DatafoxConfig::new(storage).with_environment(datafox_environment.clone());
         let config = match *self {
             Self::Serial => config.serial(),
             Self::Parallel { seed_threshold } => {
@@ -1004,12 +1050,17 @@ impl GeneratedRuleRunner {
         evaluation_profile: GeneratedRuleEvaluationProfile,
     ) -> Result<Self> {
         let rules = load_all_rules(repo_root, config)?;
-        let mut rules_by_language: HashMap<String, Vec<CompiledRule>> = HashMap::new();
+        let datafox_environment = DatafoxEnvironment::builder()
+            .with_planning_cache(PlanningCache::unbounded())
+            .build();
+        let mut rules_by_language: HashMap<Grammar, Vec<PreparedCompiledRule>> = HashMap::new();
         for rule in rules {
-            rules_by_language
-                .entry(rule.language.clone())
-                .or_default()
-                .push(rule);
+            let language = Grammar::from_name(&rule.language).with_context(|| {
+                format!("Unsupported generated rule language `{}`", rule.language)
+            })?;
+            let mut prepared = prepare_compiled_rules([rule], &datafox_environment)?;
+            let rule = prepared.pop().expect("one prepared rule");
+            rules_by_language.entry(language).or_default().push(rule);
         }
 
         Ok(Self {
@@ -1019,6 +1070,7 @@ impl GeneratedRuleRunner {
                 .map(|(language, rules)| (language, Arc::new(rules)))
                 .collect(),
             evaluation_profile,
+            datafox_environment,
         })
     }
 
@@ -1034,7 +1086,7 @@ impl GeneratedRuleRunner {
         let Some(grammar) = result.language else {
             return Ok(Vec::new());
         };
-        let Some(rules) = self.rules_by_language.get(grammar.name()) else {
+        let Some(rules) = self.rules_by_language.get(&grammar) else {
             return Ok(Vec::new());
         };
 
@@ -1049,7 +1101,17 @@ impl GeneratedRuleRunner {
             &source,
             rules,
             self.evaluation_profile,
+            &self.datafox_environment,
         )
+    }
+
+    #[cfg(test)]
+    fn prepared_query_count(&self) -> usize {
+        self.rules_by_language
+            .values()
+            .flat_map(|rules| rules.iter())
+            .map(|rule| rule.prepared_queries.len())
+            .sum()
     }
 }
 
@@ -1328,12 +1390,17 @@ fn run_rules_on_file_sync(
     source: &str,
     rules: &[CompiledRule],
 ) -> Result<Vec<LintViolation>> {
+    let datafox_environment = DatafoxEnvironment::builder()
+        .with_planning_cache(PlanningCache::unbounded())
+        .build();
+    let rules = prepare_compiled_rules(rules.iter().cloned(), &datafox_environment)?;
     run_rules_on_file_sync_with_profile(
         repo_root,
         grammar,
         source,
-        rules,
+        &rules,
         GeneratedRuleEvaluationProfile::serial(),
+        &datafox_environment,
     )
 }
 
@@ -1341,41 +1408,49 @@ fn run_rules_on_file_sync_with_profile(
     repo_root: &Path,
     grammar: Grammar,
     source: &str,
-    rules: &[CompiledRule],
+    rules: &[PreparedCompiledRule],
     evaluation_profile: GeneratedRuleEvaluationProfile,
+    datafox_environment: &DatafoxEnvironment,
 ) -> Result<Vec<LintViolation>> {
     let required_predicates = required_fact_predicates(rules);
     let (storage, locations) =
         load_or_build_facts(repo_root, grammar, source, &required_predicates)?;
-    evaluate_rules(storage, locations, rules, evaluation_profile)
+    evaluate_rules(
+        storage,
+        locations,
+        rules,
+        evaluation_profile,
+        datafox_environment,
+    )
 }
 
 fn evaluate_rules(
     storage: InMemoryStorage,
     locations: HashMap<i64, NodeLocation>,
-    rules: &[CompiledRule],
+    rules: &[PreparedCompiledRule],
     evaluation_profile: GeneratedRuleEvaluationProfile,
+    datafox_environment: &DatafoxEnvironment,
 ) -> Result<Vec<LintViolation>> {
     let mut violations = Vec::new();
     let mut seen = BTreeSet::new();
-    let datafox = evaluation_profile.client_for(&storage)?;
+    let datafox = evaluation_profile.client_for(&storage, datafox_environment)?;
 
     for rule in rules {
-        for query in &rule.queries {
+        for query in &rule.prepared_queries {
             for substitution in datafox
-                .eval(query)
-                .with_context(|| format!("Failed to evaluate generated rule `{}`", rule.id))?
+                .eval_prepared(query)
+                .with_context(|| format!("Failed to evaluate generated rule `{}`", rule.rule.id))?
             {
-                let Some(Value::Integer(node_id)) = substitution.lookup(&rule.primary) else {
+                let Some(Value::Integer(node_id)) = substitution.lookup(&rule.rule.primary) else {
                     continue;
                 };
                 let Some(location) = locations.get(node_id) else {
                     continue;
                 };
 
-                let message = render_message_template(&rule.message_template, &substitution);
+                let message = render_message_template(&rule.rule.message_template, &substitution);
                 let key = (
-                    rule.id.clone(),
+                    rule.rule.id.clone(),
                     location.line,
                     location.column,
                     message.clone(),
@@ -1385,8 +1460,8 @@ fn evaluate_rules(
                         line: location.line,
                         column: location.column,
                         message,
-                        lint_name: rule.name.clone(),
-                        lint_id: rule.id.clone(),
+                        lint_name: rule.rule.name.clone(),
+                        lint_id: rule.rule.id.clone(),
                     });
                 }
             }
@@ -1423,10 +1498,10 @@ fn render_message_template(template: &str, substitution: &Substitution) -> Strin
     message
 }
 
-fn required_fact_predicates(rules: &[CompiledRule]) -> BTreeSet<String> {
+fn required_fact_predicates(rules: &[PreparedCompiledRule]) -> BTreeSet<String> {
     let mut predicates = BTreeSet::new();
     for rule in rules {
-        for query in &rule.queries {
+        for query in &rule.rule.queries {
             for clause in query.clauses() {
                 match clause {
                     Clause::Atom(atom) | Clause::Negated(atom) => {
@@ -2656,6 +2731,43 @@ Avoid dbg! in committed code.
             .await
             .unwrap();
         assert_eq!(generated[&source_path][0].lint_id, "rust.no-dbg");
+    }
+
+    #[test]
+    fn generated_rule_runner_prepares_queries_once_by_grammar() {
+        let temp = tempdir().unwrap();
+        let rules = rules_dir(temp.path());
+        fs::create_dir_all(&rules).unwrap();
+        let gen = gen_dir(temp.path());
+        fs::create_dir_all(&gen).unwrap();
+        fs::write(
+            rules.join("no-dbg.md"),
+            r#"---
+id: rust.no-dbg
+lang: rust
+---
+
+Avoid dbg! in committed code.
+"#,
+        )
+        .unwrap();
+        fs::write(
+            gen.join("no-dbg.df"),
+            r#"node(Node, "macro_invocation", _, _, _, _), text(Node, Text), contains(Text, "dbg!")"#,
+        )
+        .unwrap();
+        compile_project(temp.path()).unwrap();
+
+        let config = LintbookConfig::new(vec!["rust"]);
+        let expected_queries = load_all_rules(temp.path(), &config)
+            .unwrap()
+            .iter()
+            .map(|rule| rule.queries.len())
+            .sum::<usize>();
+        let runner = GeneratedRuleRunner::new(temp.path(), &config).unwrap();
+
+        assert!(runner.rules_by_language.contains_key(&Grammar::Rust));
+        assert_eq!(runner.prepared_query_count(), expected_queries);
     }
 
     #[test]

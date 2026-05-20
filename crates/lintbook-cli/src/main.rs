@@ -422,9 +422,7 @@ async fn check_project(output: OutputFormat, files: Vec<String>) -> anyhow::Resu
     let current_dir = env::current_dir()?;
     let repo_root = Scanner::find_repo_root(&current_dir)?;
     let config = read_config(&repo_root, &output)?;
-    let active_rule_languages = lintbook_rules::active_rule_languages(&repo_root, &config)?
-        .into_iter()
-        .collect::<HashSet<_>>();
+    let active_rule_languages = lintbook_rules::active_rule_languages(&repo_root, &config)?;
     let evaluation_profile = generated_rule_evaluation_profile(&current_dir, &files);
 
     if !matches!(output, OutputFormat::Json) {
@@ -582,7 +580,7 @@ fn stream_check_results(
     current_dir: &Path,
     config: &LintbookConfig,
     files: &[String],
-    active_rule_languages: &HashSet<String>,
+    active_rule_languages: &HashSet<Grammar>,
     evaluation_profile: lintbook_rules::GeneratedRuleEvaluationProfile,
     scan_start: std::time::Instant,
 ) -> anyhow::Result<()> {
@@ -671,7 +669,7 @@ fn stream_lint_results<F>(
     current_dir: &Path,
     config: &LintbookConfig,
     files: &[String],
-    active_rule_languages: &HashSet<String>,
+    active_rule_languages: &HashSet<Grammar>,
     handler: F,
 ) -> anyhow::Result<()>
 where
@@ -757,7 +755,7 @@ fn collect_lint_results(
     current_dir: &Path,
     config: &LintbookConfig,
     files: &[String],
-    active_rule_languages: &HashSet<String>,
+    active_rule_languages: &HashSet<Grammar>,
 ) -> anyhow::Result<Vec<LintResult<Grammar>>> {
     if files.is_empty() {
         return Scanner::scan_and_lint_files(repo_root, config, active_rule_languages);
