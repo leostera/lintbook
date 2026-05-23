@@ -1,12 +1,18 @@
 # lintbook
 
-`lintbook` is an LLM-powered linter for checks that are too project-specific, contextual, or new to wait for a general-purpose lint rule.
+`lintbook` is an LLM-powered linter for repeatable quality checks that are too project-specific, contextual, or new to wait for a general-purpose lint rule.
 
 You write the intent of a rule in plain Markdown, let an agent translate it into a Datafox query once, and then run that query locally at lint speed. The LLM is in the authoring path, not the checking path, so `lintbook check` stays deterministic, cacheable, and CI-friendly.
 
 ## Why lintbook
 
-Most linters are excellent at enforcing rules that already exist. They are weaker when a team wants to encode local judgment:
+Agents are good at noticing issues, but they are a poor runtime for checks you want on every commit:
+
+- They are nondeterministic and can miss the same issue on the next run.
+- They are slow; one model call per file or file group does not scale.
+- They are expensive; repeated commit-time checks burn tokens quickly.
+
+Traditional linters solve those runtime problems, but writing custom rules for different lint engines takes time, tool-specific knowledge, and maintenance energy. Most linters are excellent at enforcing rules that already exist. They are weaker when a team wants to encode local judgment:
 
 - "Do not use this internal helper outside the API boundary."
 - "Public Rust types in this crate need documentation."
@@ -14,6 +20,12 @@ Most linters are excellent at enforcing rules that already exist. They are weake
 - "Flag this migration shape unless it is paired with this rollback statement."
 
 `lintbook` is built for those rules. The rulebook lives in your repository, the generated query artifacts are committed, and the fast path runs without a model, network call, or agent session.
+
+The result is:
+
+- Deterministic: rules compile to Datafox queries.
+- Fast: a roughly 30k line project can run in about 300ms.
+- Cheap: tokens are used only while compiling or authoring lints.
 
 ## Install
 
