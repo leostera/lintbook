@@ -1,8 +1,14 @@
 [hooks]
 pre-commit = """
-# Get list of staged files and run treelint on them, excluding test fixtures
-STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -v "crates/treelint-tests/fixtures")
+set -eu
+
+STAGED_FILES=$(
+  git diff --cached --name-only --diff-filter=ACM |
+    grep -E '\\.(rs|py|pyi|ex|exs|sql)$' |
+    grep -v '^crates/lintbook-tests/fixtures/' || true
+)
+
 if [ -n "$STAGED_FILES" ]; then
-    cargo run -p treelint-cli -- check $STAGED_FILES
+  cargo run -q -p lintbook-cli --bin lintbook -- check $STAGED_FILES
 fi
 """

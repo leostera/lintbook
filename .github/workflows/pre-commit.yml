@@ -9,22 +9,33 @@ jobs:
   lintbook:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@stable
-      
-    - name: Cache cargo dependencies
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-        
-    - name: Build lintbook
-      run: cargo build --bin lintbook
-      
-    - name: Run lintbook on codebase
-      run: ./target/debug/lintbook check
+      - name: Checkout lintbook
+        uses: actions/checkout@v4
+        with:
+          path: lintbook
+
+      - name: Checkout datafox
+        uses: actions/checkout@v4
+        with:
+          repository: leostera/datafox
+          path: datafox
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            lintbook/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('lintbook/**/Cargo.lock') }}
+
+      - name: Build lintbook
+        working-directory: lintbook
+        run: cargo build --locked -p lintbook-cli --bin lintbook
+
+      - name: Run lintbook on codebase
+        working-directory: lintbook
+        run: ./target/debug/lintbook check

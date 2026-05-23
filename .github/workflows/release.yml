@@ -1,0 +1,219 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, such as v0.1.0"
+        required: true
+        default: "v0.1.0"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: macos-13
+            target: x86_64-apple-darwin
+          - os: macos-14
+            target: aarch64-apple-darwin
+
+    steps:
+      - name: Checkout lintbook
+        uses: actions/checkout@v4
+        with:
+          path: lintbook
+
+      - name: Checkout datafox
+        uses: actions/checkout@v4
+        with:
+          repository: leostera/datafox
+          path: datafox
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            lintbook/target
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('lintbook/**/Cargo.lock') }}
+
+      - name: Build release binary
+        working-directory: lintbook
+        run: cargo build --locked --release -p lintbook-cli --bin lintbook --target "${{ matrix.target }}"
+
+      - name: Package release archive
+        working-directory: lintbook
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          release_tag="${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}"
+          archive="lintbook-${release_tag}-${{ matrix.target }}"
+
+          mkdir -p "dist/${archive}"
+          cp "target/${{ matrix.target }}/release/lintbook" "dist/${archive}/lintbook"
+          cp README.md LICENSE "dist/${archive}/"
+          tar -C dist -czf "dist/${archive}.tar.gz" "${archive}"
+
+      - name: Upload archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: lintbook-${{ matrix.target }}
+          path: lintbook/dist/*.tar.gz
+          if-no-files-found: error
+
+  publish-release:
+    name: Publish GitHub release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download archives
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          files: dist/*.tar.gz
+
+  homebrew-formula:
+    name: Build Homebrew formula
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download archives
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Generate formula
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          release_tag="${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}"
+          version="${release_tag#v}"
+          repo="leostera/lintbook"
+
+          linux_sha="$(sha256sum "dist/lintbook-${release_tag}-x86_64-unknown-linux-gnu.tar.gz" | cut -d ' ' -f 1)"
+          mac_intel_sha="$(sha256sum "dist/lintbook-${release_tag}-x86_64-apple-darwin.tar.gz" | cut -d ' ' -f 1)"
+          mac_arm_sha="$(sha256sum "dist/lintbook-${release_tag}-aarch64-apple-darwin.tar.gz" | cut -d ' ' -f 1)"
+
+          mkdir -p homebrew/Formula
+          cat > homebrew/Formula/lintbook.rb <<RUBY
+          class Lintbook < Formula
+            desc "LLM-powered linter for project-local rulebooks"
+            homepage "https://github.com/${repo}"
+            version "${version}"
+            license "BSD-3-Clause"
+
+            on_macos do
+              if Hardware::CPU.arm?
+                url "https://github.com/${repo}/releases/download/v${version}/lintbook-v${version}-aarch64-apple-darwin.tar.gz"
+                sha256 "${mac_arm_sha}"
+              else
+                url "https://github.com/${repo}/releases/download/v${version}/lintbook-v${version}-x86_64-apple-darwin.tar.gz"
+                sha256 "${mac_intel_sha}"
+              end
+            end
+
+            on_linux do
+              if Hardware::CPU.intel?
+                url "https://github.com/${repo}/releases/download/v${version}/lintbook-v${version}-x86_64-unknown-linux-gnu.tar.gz"
+                sha256 "${linux_sha}"
+              else
+                odie "lintbook release archives are not published for this Linux architecture yet"
+              end
+            end
+
+            def install
+              bin.install "lintbook"
+            end
+
+            test do
+              assert_match "lintbook", shell_output("#{bin}/lintbook --help")
+            end
+          end
+          RUBY
+
+      - name: Upload formula artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: homebrew-formula
+          path: homebrew/Formula/lintbook.rb
+          if-no-files-found: error
+
+  publish-homebrew-tap:
+    name: Publish Homebrew tap
+    needs: homebrew-formula
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check tap token
+        id: tap_token
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          if [ -n "${HOMEBREW_TAP_TOKEN}" ]; then
+            echo "present=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "present=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Download formula
+        if: steps.tap_token.outputs.present == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: homebrew-formula
+          path: homebrew
+
+      - name: Checkout Homebrew tap
+        if: steps.tap_token.outputs.present == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: leostera/homebrew-lintbook
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: tap
+
+      - name: Commit formula
+        if: steps.tap_token.outputs.present == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          release_tag="${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}"
+
+          formula_path="homebrew/lintbook.rb"
+          if [ ! -f "${formula_path}" ]; then
+            formula_path="homebrew/Formula/lintbook.rb"
+          fi
+
+          mkdir -p tap/Formula
+          cp "${formula_path}" tap/Formula/lintbook.rb
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/lintbook.rb
+          git commit -m "Update lintbook ${release_tag}" || exit 0
+          git push
